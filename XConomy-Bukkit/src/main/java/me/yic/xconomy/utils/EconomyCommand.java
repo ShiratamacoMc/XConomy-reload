@@ -20,12 +20,18 @@ package me.yic.xconomy.utils;
 
 import me.yic.xconomy.command.core.CommandCore;
 import me.yic.xconomy.adapter.comp.CSender;
+import me.yic.xconomy.listeners.TabList;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 public class EconomyCommand extends Command {
     private final String name;
+    private final TabCompleter tabCompleter = new TabList();
 
     public EconomyCommand(String name) {
         super(name);
@@ -34,9 +40,22 @@ public class EconomyCommand extends Command {
         this.usageMessage = "/<command>";
     }
 
+    public EconomyCommand(String name, List<String> aliases) {
+        super(name);
+        this.name = name;
+        this.description = "XConomy.";
+        this.usageMessage = "/<command>";
+        this.setAliases(aliases);
+    }
+
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String s, @NotNull String[] args) {
         return CommandCore.onCommand(new CSender(sender), name, args);
+    }
+
+    @Override
+    public @Nullable List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) {
+        return tabCompleter.onTabComplete(sender, this, name, args);
     }
 
 }

@@ -57,7 +57,6 @@ public class XConomy extends JavaPlugin {
 
     private ImportData itd = null;
 
-    @SuppressWarnings("ConstantConditions")
     public void onEnable() {
         instance = this;
         PVersion = getInstance().getDescription().getVersion();
@@ -128,32 +127,24 @@ public class XConomy extends JavaPlugin {
         metrics = new Metrics(this, 6588);
         metrics.addCustomChart(new SimplePie("uuid-mode", () -> XConomyLoad.Config.UUIDMODE.toString().substring(11)));
 
-        Bukkit.getPluginCommand("money").setExecutor(new Commands());
-        Bukkit.getPluginCommand("balance").setExecutor(new Commands());
-        Bukkit.getPluginCommand("balancetop").setExecutor(new Commands());
-        Bukkit.getPluginCommand("pay").setExecutor(new Commands());
-        Bukkit.getPluginCommand("xconomy").setExecutor(new Commands());
-        Bukkit.getPluginCommand("paytoggle").setExecutor(new Commands());
-        Bukkit.getPluginCommand("paypermission").setExecutor(new Commands());
+        try {
+            final Field bukkitCommandMap = Bukkit.getServer().getClass().getDeclaredField("commandMap");
+            bukkitCommandMap.setAccessible(true);
+            CommandMap commandMap = (CommandMap) bukkitCommandMap.get(Bukkit.getServer());
 
-        this.getCommand("money").setTabCompleter(new TabList());
-        this.getCommand("balance").setTabCompleter(new TabList());
-        this.getCommand("balancetop").setTabCompleter(new TabList());
-        this.getCommand("pay").setTabCompleter(new TabList());
-        this.getCommand("xconomy").setTabCompleter(new TabList());
-        this.getCommand("paytoggle").setTabCompleter(new TabList());
-        this.getCommand("paypermission").setTabCompleter(new TabList());
-        this.getCommand("paypermission").setPermission("xconomy.admin.permission");
+            registerCommand(commandMap, "xconomy",     java.util.Arrays.asList("xc"));
+            registerCommand(commandMap, "money",       java.util.Collections.emptyList());
+            registerCommand(commandMap, "balance",     java.util.Arrays.asList("bal"));
+            registerCommand(commandMap, "balancetop",  java.util.Arrays.asList("baltop"));
+            registerCommand(commandMap, "pay",         java.util.Collections.emptyList());
+            registerCommand(commandMap, "paytoggle",   java.util.Collections.emptyList());
+            registerCommand(commandMap, "paypermission", java.util.Arrays.asList("payperm"));
 
-        if (XConomyLoad.Config.ECO_COMMAND) {
-            try {
-                final Field bukkitCommandMap = Bukkit.getServer().getClass().getDeclaredField("commandMap");
-                bukkitCommandMap.setAccessible(true);
-                CommandMap commandMap = (CommandMap) bukkitCommandMap.get(Bukkit.getServer());
+            if (XConomyLoad.Config.ECO_COMMAND) {
                 coveress(commandMap);
-            } catch (Exception e) {
-                e.printStackTrace();
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         XConomyLoad.Initial();
@@ -257,16 +248,25 @@ public class XConomy extends JavaPlugin {
     }
 
     private void coveress(CommandMap commandMap) {
-        Command commanda = new EconomyCommand("economy");
-        commandMap.register("economy", commanda);
-        Command commandb = new EconomyCommand("eco");
-        commandMap.register("eco", commandb);
-        Command commandc = new EconomyCommand("ebalancetop");
-        commandMap.register("ebalancetop", commandc);
-        Command commandd = new EconomyCommand("ebaltop");
-        commandMap.register("ebaltop", commandd);
-        Command commande = new EconomyCommand("eeconomy");
-        commandMap.register("eeconomy", commande);
+        commandMap.register("economy",   "xconomy", new EconomyCommand("economy",  java.util.Arrays.asList("eco", "eeconomy")));
+        commandMap.register("ebalancetop","xconomy", new EconomyCommand("ebalancetop", java.util.Arrays.asList("ebaltop")));
+    }
+
+    private void registerCommand(CommandMap commandMap, String name, java.util.List<String> aliases) {
+        EconomyCommand cmd = new EconomyCommand(name, aliases);
+        if (name.equals("paypermission")) {
+            cmd.setPermission("xconomy.admin.permission");
+        }
+        org.bukkit.command.PluginCommand pc = Bukkit.getPluginCommand(name);
+        if (pc != null) {
+            pc.setExecutor(new Commands());
+            pc.setTabCompleter(new TabList());
+            if (name.equals("paypermission")) {
+                pc.setPermission("xconomy.admin.permission");
+            }
+        } else {
+            commandMap.register(name, "xconomy", cmd);
+        }
     }
 
     @SuppressWarnings("all")
