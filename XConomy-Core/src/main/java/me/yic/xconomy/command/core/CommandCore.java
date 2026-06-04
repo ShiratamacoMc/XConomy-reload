@@ -75,6 +75,9 @@ public class CommandCore {
                         return true;
                     }
                 }
+                if (args.length >= 2 && args[0].equalsIgnoreCase("track")) {
+                    return CommandTrack.onCommand(sender, args);
+                }
                 if (args.length == 1 && args[0].equalsIgnoreCase("help")) {
                     sendHelpMessage(sender, 1);
                     return true;
@@ -244,6 +247,15 @@ public class CommandCore {
         if (sender.isOp() | sender.hasPermission("xconomy.admin.permission")) {
             helplist.add(translateColorCodes("help13"));
             helplist.add(translateColorCodes("help14"));
+        }
+        if (XConomyLoad.Config.TRACKING_ENABLE) {
+            helplist.add(translateColorCodes("help15"));
+            if (sender.isOp() | sender.hasPermission("xconomy.admin.track.other")) {
+                helplist.add(translateColorCodes("help16"));
+            }
+            if (sender.isOp() | sender.hasPermission("xconomy.admin.track.cleanup")) {
+                helplist.add(translateColorCodes("help17"));
+            }
         }
         Integer maxipages;
         if (helplist.size() % XConomyLoad.Config.LINES_PER_PAGE == 0) {

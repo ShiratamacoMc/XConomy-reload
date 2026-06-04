@@ -136,8 +136,8 @@ public class DataLink{
         return SQL.sumBal();
     }
 
-    public static void save(PlayerData pd, Boolean isAdd, BigDecimal amount, RecordInfo ri) {
-        SQL.save(pd, isAdd, amount, ri);
+    public static Long save(PlayerData pd, Boolean isAdd, BigDecimal amount, RecordInfo ri) {
+        return SQL.save(pd, isAdd, amount, ri);
     }
 
     public static void newPlayer(CPlayer a) {

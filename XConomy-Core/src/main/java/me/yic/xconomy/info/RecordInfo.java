@@ -20,12 +20,20 @@ package me.yic.xconomy.info;
 
 import me.yic.xconomy.XConomy;
 
+import java.util.UUID;
+
 public class RecordInfo {
     private final String type;
 
     private final String command;
 
     private final String comment;
+
+    private UUID fromUid;
+    private UUID toUid;
+    private String transactionType;
+    private String traceId;
+    private Long parentTransactionId;
 
     public RecordInfo(String type, String command, Object comment) {
         if (command == null) {
@@ -66,5 +74,58 @@ public class RecordInfo {
 
     public String getComment() {
         return comment;
+    }
+
+    public UUID getFromUid() {
+        return fromUid;
+    }
+
+    public void setFromUid(UUID fromUid) {
+        this.fromUid = fromUid;
+    }
+
+    public UUID getToUid() {
+        return toUid;
+    }
+
+    public void setToUid(UUID toUid) {
+        this.toUid = toUid;
+    }
+
+    public String getTransactionType() {
+        return transactionType;
+    }
+
+    public void setTransactionType(String transactionType) {
+        this.transactionType = transactionType;
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
+
+    public Long getParentTransactionId() {
+        return parentTransactionId;
+    }
+
+    public void setParentTransactionId(Long parentTransactionId) {
+        this.parentTransactionId = parentTransactionId;
+    }
+
+    public RecordInfo withTracking(UUID fromUid, UUID toUid, String transactionType) {
+        this.fromUid = fromUid;
+        this.toUid = toUid;
+        this.transactionType = transactionType;
+        return this;
+    }
+
+    public RecordInfo withTraceInfo(String traceId, Long parentTransactionId) {
+        this.traceId = traceId;
+        this.parentTransactionId = parentTransactionId;
+        return this;
     }
 }

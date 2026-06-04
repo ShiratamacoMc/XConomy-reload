@@ -124,3 +124,17 @@ Region-Thread:
   world: world
   range-x: 1024
   range-y: 1024
+
+
+#Transaction tracking settings
+Transaction-Tracking:
+  #Whether to enable transaction tracking
+  enable: true
+  #Record retention days (0 means permanent storage)
+  retention-days: 90
+  #Whether to auto cleanup expired records
+  auto-cleanup: true
+  #Auto cleanup execution time (24-hour format)
+  cleanup-time: "03:00"
+  #Records per page for tracking commands
+  records-per-page: 10

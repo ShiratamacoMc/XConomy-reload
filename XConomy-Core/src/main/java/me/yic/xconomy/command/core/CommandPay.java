@@ -129,12 +129,16 @@ public class CommandPay extends CommandCore{
         }
 
         String com = commandName + " " + args[0] + " " + amount;
-        DataCon.changeplayerdata("PLAYER_COMMAND", sender.toPlayer().getUniqueId(), taxamount, false, com, null);
+        UUID senderUid = sender.toPlayer().getUniqueId();
+        
+        // Sender pays (expense)
+        DataCon.changeplayerdata("PLAYER_COMMAND", senderUid, taxamount, false, com, "PAY_SEND:" + targetUUID.toString());
         sendMessages(sender, PREFIX + translateColorCodes("pay")
                 .replace("%player%", realname)
                 .replace("%amount%", amountFormatted));
 
-        DataCon.changeplayerdata("PLAYER_COMMAND", targetUUID, amount, true, com, null);
+        // Target receives (income)
+        DataCon.changeplayerdata("PLAYER_COMMAND", targetUUID, amount, true, com, "PAY_RECEIVE:" + senderUid.toString());
         String mess = PREFIX + translateColorCodes("pay_receive")
                 .replace("%player%", sender.getName())
                 .replace("%amount%", amountFormatted);

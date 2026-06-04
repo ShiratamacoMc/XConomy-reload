@@ -101,7 +101,11 @@ public class SQL {
                     + "(id int(20) not null auto_increment, type varchar(50) not null, uid varchar(50) not null, player varchar(50) not null,"
                     + "balance double(20,2), amount double(20,2) not null, operation varchar(50) not null,"
                     + " command varchar(255) not null, comment varchar(255) not null, datetime datetime not null,"
-                    + " primary key (id)) default charset = " + encoding + ";";
+                    + " from_uid varchar(50), to_uid varchar(50), transaction_type varchar(20), server_id varchar(50),"
+                    + " trace_id varchar(50), parent_transaction_id bigint(20),"
+                    + " primary key (id), INDEX idx_uid (uid), INDEX idx_from_uid (from_uid), INDEX idx_to_uid (to_uid),"
+                    + " INDEX idx_datetime (datetime), INDEX idx_transaction_type (transaction_type),"
+                    + " INDEX idx_trace_id (trace_id), INDEX idx_parent_transaction_id (parent_transaction_id)) default charset = " + encoding + ";";
             String query4 = "create table if not exists " + tableLoginName
                     + "(UUID varchar(50) not null, last_time datetime not null, " + "primary key (UUID)) default charset = " + encoding + ";";
 
@@ -144,7 +148,57 @@ public class SQL {
             statement.close();
             database.closeHikariConnection(connection);
 
+            // Upgrade table for tracking if needed
+            if (XConomyLoad.DConfig.isMySQL() && XConomyLoad.Config.TRACKING_ENABLE) {
+                upgradeRecordTableForTracking();
+            }
+
         } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Upgrade existing record table to add tracking fields
+     */
+    public static void upgradeRecordTableForTracking() {
+        try {
+            Connection connection = database.getConnectionAndCheck();
+            
+            // Check if columns already exist
+            ResultSet rs = connection.getMetaData().getColumns(null, null, tableRecordName, "from_uid");
+            boolean hasFromUid = rs.next();
+            rs.close();
+
+            if (!hasFromUid) {
+                Statement statement = connection.createStatement();
+                
+                // Add new columns
+                statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD COLUMN from_uid varchar(50)");
+                statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD COLUMN to_uid varchar(50)");
+                statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD COLUMN transaction_type varchar(20)");
+                statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD COLUMN server_id varchar(50)");
+                statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD COLUMN trace_id varchar(50)");
+                statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD COLUMN parent_transaction_id bigint(20)");
+                
+                // Add indexes
+                try {
+                    statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD INDEX idx_from_uid (from_uid)");
+                    statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD INDEX idx_to_uid (to_uid)");
+                    statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD INDEX idx_transaction_type (transaction_type)");
+                    statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD INDEX idx_trace_id (trace_id)");
+                    statement.executeUpdate("ALTER TABLE " + tableRecordName + " ADD INDEX idx_parent_transaction_id (parent_transaction_id)");
+                } catch (SQLException ignored) {
+                    // Indexes might already exist
+                }
+                
+                statement.close();
+                XConomy.getInstance().logger("Upgraded transaction record table for tracking", 0, null);
+            }
+            
+            database.closeHikariConnection(connection);
+        } catch (SQLException e) {
+            XConomy.getInstance().logger("Error upgrading record table", 1, null);
             e.printStackTrace();
         }
     }
@@ -268,8 +322,9 @@ public class SQL {
         }
     }
 
-    public static void save(PlayerData pd, Boolean isAdd, BigDecimal amount, RecordInfo ri) {
+    public static Long save(PlayerData pd, Boolean isAdd, BigDecimal amount, RecordInfo ri) {
         Connection connection = database.getConnectionAndCheck();
+        Long transactionId = null;
         try {
             String query = " set balance = ? where UID = ?";
 //            if (XConomyLoad.Config.DISABLE_CACHE) {
@@ -293,8 +348,9 @@ public class SQL {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        record(connection, pd, isAdd, amount, pd.getBalance(), ri);
+        transactionId = record(connection, pd, isAdd, amount, pd.getBalance(), ri, ri.getFromUid(), ri.getToUid(), ri.getTransactionType());
         database.closeHikariConnection(connection);
+        return transactionId;
     }
 
     //public static void save(String type, PlayerData pd, Boolean isAdd,
@@ -408,7 +464,7 @@ public class SQL {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        record(connection, new PlayerData(null, account, null), isAdd, amount, newbalance, ri);
+        record(connection, new PlayerData(null, account, null), isAdd, amount, newbalance, ri, ri.getFromUid(), ri.getToUid(), ri.getTransactionType());
         database.closeHikariConnection(connection);
     }
 
@@ -494,8 +550,14 @@ public class SQL {
         database.closeHikariConnection(connection);
     }
 
-    public static void record(Connection co, PlayerData pd, Boolean isAdd,
+    public static Long record(Connection co, PlayerData pd, Boolean isAdd,
                               BigDecimal amount, BigDecimal newbalance, RecordInfo ri) {
+        return record(co, pd, isAdd, amount, newbalance, ri, null, null, null);
+    }
+
+    public static Long record(Connection co, PlayerData pd, Boolean isAdd,
+                              BigDecimal amount, BigDecimal newbalance, RecordInfo ri,
+                              UUID fromUid, UUID toUid, String transactionType) {
         if (XConomyLoad.DConfig.isMySQL() && XConomyLoad.Config.TRANSACTION_RECORD) {
             String uid = "N/A";
             String name = "N/A";
@@ -519,23 +581,62 @@ public class SQL {
                 String query;
                 Date dd = new Date();
                 String sd = (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")).format(dd);
-                query = "INSERT INTO " + tableRecordName + "(type,uid,player,balance,amount,operation,command,comment,datetime) values(?,?,?,?,?,?,?,?,?)";
-                PreparedStatement statement = co.prepareStatement(query);
-                statement.setString(1, ri.getType());
-                statement.setString(2, uid);
-                statement.setString(3, name);
-                statement.setDouble(4, newbalance.doubleValue());
-                statement.setDouble(5, amount.doubleValue());
-                statement.setString(6, operation);
-                statement.setString(7, ri.getCommand());
-                statement.setString(8, ri.getComment());
-                statement.setString(9, sd);
-                statement.executeUpdate();
-                statement.close();
+                Long insertedId = null;
+                
+                if (XConomyLoad.Config.TRACKING_ENABLE) {
+                    query = "INSERT INTO " + tableRecordName + "(type,uid,player,balance,amount,operation,command,comment,datetime,from_uid,to_uid,transaction_type,server_id,trace_id,parent_transaction_id) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    PreparedStatement statement = co.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS);
+                    statement.setString(1, ri.getType());
+                    statement.setString(2, uid);
+                    statement.setString(3, name);
+                    statement.setDouble(4, newbalance.doubleValue());
+                    statement.setDouble(5, amount.doubleValue());
+                    statement.setString(6, operation);
+                    statement.setString(7, ri.getCommand());
+                    statement.setString(8, ri.getComment());
+                    statement.setString(9, sd);
+                    statement.setString(10, fromUid != null ? fromUid.toString() : "N/A");
+                    statement.setString(11, toUid != null ? toUid.toString() : "N/A");
+                    statement.setString(12, transactionType != null ? transactionType : "UNKNOWN");
+                    statement.setString(13, XConomyLoad.Config.SYNCDATA_SIGN);
+                    statement.setString(14, ri.getTraceId());
+                    if (ri.getParentTransactionId() != null) {
+                        statement.setLong(15, ri.getParentTransactionId());
+                    } else {
+                        statement.setNull(15, java.sql.Types.BIGINT);
+                    }
+                    statement.executeUpdate();
+                    
+                    // Get inserted ID
+                    ResultSet generatedKeys = statement.getGeneratedKeys();
+                    if (generatedKeys.next()) {
+                        insertedId = generatedKeys.getLong(1);
+                    }
+                    generatedKeys.close();
+                    statement.close();
+                    return insertedId;
+                } else {
+                    query = "INSERT INTO " + tableRecordName + "(type,uid,player,balance,amount,operation,command,comment,datetime) values(?,?,?,?,?,?,?,?,?)";
+                    PreparedStatement statement = co.prepareStatement(query);
+                    statement.setString(1, ri.getType());
+                    statement.setString(2, uid);
+                    statement.setString(3, name);
+                    statement.setDouble(4, newbalance.doubleValue());
+                    statement.setDouble(5, amount.doubleValue());
+                    statement.setString(6, operation);
+                    statement.setString(7, ri.getCommand());
+                    statement.setString(8, ri.getComment());
+                    statement.setString(9, sd);
+                    statement.executeUpdate();
+                    statement.close();
+                    return null;
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
+                return null;
             }
         }
+        return null;
     }
 
 }

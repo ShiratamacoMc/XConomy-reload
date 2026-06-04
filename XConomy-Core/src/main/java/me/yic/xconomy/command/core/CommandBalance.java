@@ -153,7 +153,8 @@ public class CommandBalance extends CommandCore{
                 UUID targetUUID = pd.getUniqueId();
                 String realname = pd.getName();
 
-                String com = commandName + " " + args[0] + " " + args[1] + " " + amount;
+                String senderName = sender.isPlayer() ? sender.getName() : translateColorCodes("console_name");
+                String com = "[" + senderName + "] " + commandName + " " + args[0] + " " + args[1] + " " + amount;
                 if (commndlength == 4) {
                     com += " " + reasonmessages;
                 }
@@ -341,7 +342,7 @@ public class CommandBalance extends CommandCore{
 
                 String amountFormatted = DataFormat.shown(amount);
 
-                String com = commandName + " " + args[0] + " " + args[1] + " " + args[2] + " " + amount + " " + reasonmessages;
+                String com = "[" + (sender.isPlayer() ? sender.getName() : translateColorCodes("console_name")) + "] " + commandName + " " + args[0] + " " + args[1] + " " + args[2] + " " + amount + " " + reasonmessages;
 
                 switch (args[0].toLowerCase()) {
                     case "give": {

@@ -21,6 +21,7 @@ package me.yic.xconomy;
 import me.yic.xconomy.data.DataCon;
 import me.yic.xconomy.data.DataFormat;
 import me.yic.xconomy.data.sql.SQL;
+import me.yic.xconomy.data.tracking.TransactionCleanup;
 import me.yic.xconomy.info.DataBaseConfig;
 import me.yic.xconomy.info.DefaultConfig;
 import me.yic.xconomy.info.SyncChannalType;
@@ -62,6 +63,12 @@ public class XConomyLoad{
         }
 
         DataFormat.load();
+
+        // Initialize transaction tracking
+        if (Config.TRACKING_ENABLE && DConfig.isMySQL()) {
+            TransactionCleanup.scheduleAutoCleanup();
+            XConomy.getInstance().logger("交易追踪系统已启用", 0, null);
+        }
     }
 
     public static void Unload() {
@@ -70,6 +77,11 @@ public class XConomyLoad{
             AdapterManager.PLUGIN.unregisterOutgoingPluginChannel("xconomy:acb");
         }else if(Config.SYNCDATA_TYPE.equals(SyncChannalType.REDIS)) {
             RedisConnection.close();
+        }
+
+        // Cancel transaction tracking cleanup
+        if (Config.TRACKING_ENABLE) {
+            TransactionCleanup.cancelScheduledCleanup();
         }
 
         //AdapterManager.ScheduledThreadPool.shutdown();

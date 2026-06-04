@@ -25,49 +25,51 @@ import me.yic.xconomy.data.DataFormat;
 import me.yic.xconomy.data.DataLink;
 import me.yic.xconomy.data.syncdata.PlayerData;
 import me.yic.xconomy.depend.NonPlayerPlugin;
-import net.milkbowl.vault.economy.AbstractEconomy;
+import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-public class Vault extends AbstractEconomy {
+public class Vault implements Economy {
 
     @Override
     public EconomyResponse bankBalance(String arg0) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public EconomyResponse bankDeposit(String arg0, double arg1) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public EconomyResponse bankHas(String arg0, double arg1) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public EconomyResponse bankWithdraw(String arg0, double arg1) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public EconomyResponse createBank(String arg0, String arg1) {
-        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public EconomyResponse createBank(String arg0, OfflinePlayer arg1) {
         return null;
     }
 
     @Override
     public boolean createPlayerAccount(String name) {
-        if (isNonPlayerAccount(name)){
+        if (isNonPlayerAccount(name)) {
             return DataLink.newAccount(name);
         }
         return true;
@@ -84,7 +86,7 @@ public class Vault extends AbstractEconomy {
             return false;
         }
         try {
-            if (!DataLink.newPlayer(pp.getUniqueId(), pp.getName())){
+            if (!DataLink.newPlayer(pp.getUniqueId(), pp.getName())) {
                 return false;
             }
             return DataCon.getPlayerData(pp.getUniqueId()) != null;
@@ -110,7 +112,6 @@ public class Vault extends AbstractEconomy {
 
     @Override
     public EconomyResponse deleteBank(String arg0) {
-        // TODO Auto-generated method stub
         return null;
     }
 
@@ -129,7 +130,7 @@ public class Vault extends AbstractEconomy {
         }
 
         if (isNonPlayerAccount(name)) {
-            DataCon.changeaccountdata("PLUGIN", name, amountFormatted, true, null);
+            DataCon.changeaccountdata("PLUGIN", name, amountFormatted, true, getCallerPluginName());
             return new EconomyResponse(amount, bal, EconomyResponse.ResponseType.SUCCESS, "");
         }
 
@@ -138,7 +139,7 @@ public class Vault extends AbstractEconomy {
             return new EconomyResponse(0.0D, 0.0D, EconomyResponse.ResponseType.FAILURE, "No Account!");
         }
 
-        DataCon.changeplayerdata("PLUGIN", pd.getUniqueId(), amountFormatted, true, null, null);
+        DataCon.changeplayerdata("PLUGIN", pd.getUniqueId(), amountFormatted, true, getCallerPluginName(), null);
         return new EconomyResponse(amount, bal, EconomyResponse.ResponseType.SUCCESS, "");
     }
 
@@ -162,7 +163,7 @@ public class Vault extends AbstractEconomy {
             return new EconomyResponse(0.0D, bal, EconomyResponse.ResponseType.FAILURE, "Max balance!");
         }
 
-        DataCon.changeplayerdata("PLUGIN", pp.getUniqueId(), amountFormatted, true, null, null);
+        DataCon.changeplayerdata("PLUGIN", pp.getUniqueId(), amountFormatted, true, getCallerPluginName(), null);
         return new EconomyResponse(amount, bal, EconomyResponse.ResponseType.SUCCESS, "");
     }
 
@@ -226,7 +227,6 @@ public class Vault extends AbstractEconomy {
 
     @Override
     public List<String> getBanks() {
-        // TODO Auto-generated method stub
         return null;
     }
 
@@ -255,7 +255,6 @@ public class Vault extends AbstractEconomy {
         return has(pp, amount);
     }
 
-
     @Override
     public boolean hasAccount(String name) {
         if (isNonPlayerAccount(name)) {
@@ -281,19 +280,26 @@ public class Vault extends AbstractEconomy {
 
     @Override
     public boolean hasBankSupport() {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public EconomyResponse isBankMember(String arg0, String arg1) {
-        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public EconomyResponse isBankMember(String arg0, OfflinePlayer arg1) {
         return null;
     }
 
     @Override
     public EconomyResponse isBankOwner(String arg0, String arg1) {
-        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public EconomyResponse isBankOwner(String arg0, OfflinePlayer arg1) {
         return null;
     }
 
@@ -317,7 +323,7 @@ public class Vault extends AbstractEconomy {
         }
 
         if (isNonPlayerAccount(name)) {
-            DataCon.changeaccountdata("PLUGIN", name, amountFormatted, false, null);
+            DataCon.changeaccountdata("PLUGIN", name, amountFormatted, false, getCallerPluginName());
             return new EconomyResponse(amount, bal, EconomyResponse.ResponseType.SUCCESS, "");
         }
 
@@ -326,7 +332,7 @@ public class Vault extends AbstractEconomy {
             return new EconomyResponse(0.0D, 0.0D, EconomyResponse.ResponseType.FAILURE, "No Account!");
         }
 
-        DataCon.changeplayerdata("PLUGIN", pd.getUniqueId(), amountFormatted, false, null, null);
+        DataCon.changeplayerdata("PLUGIN", pd.getUniqueId(), amountFormatted, false, getCallerPluginName(), null);
         return new EconomyResponse(amount, bal, EconomyResponse.ResponseType.SUCCESS, "");
     }
 
@@ -350,7 +356,7 @@ public class Vault extends AbstractEconomy {
             return new EconomyResponse(0.0D, bal, EconomyResponse.ResponseType.FAILURE, "Insufficient balance!");
         }
 
-        DataCon.changeplayerdata("PLUGIN", pp.getUniqueId(), amountFormatted, false, null, null);
+        DataCon.changeplayerdata("PLUGIN", pp.getUniqueId(), amountFormatted, false, getCallerPluginName(), null);
         return new EconomyResponse(amount, bal, EconomyResponse.ResponseType.SUCCESS, "");
     }
 
@@ -362,6 +368,49 @@ public class Vault extends AbstractEconomy {
     @Override
     public EconomyResponse withdrawPlayer(OfflinePlayer pp, String arg1, double amount) {
         return withdrawPlayer(pp, amount);
+    }
+
+    /**
+     * Identify the plugin that called into Vault by walking the call stack and
+     * finding the first frame whose class does not belong to XConomy, Vault, or
+     * JDK/CraftBukkit internals.
+     *
+     * Uses {@link JavaPlugin#getProvidingPlugin(Class)} which is the correct
+     * Bukkit API for mapping a class back to its owning plugin.
+     *
+     * @return the owning plugin's name, or "Unknown" if it cannot be determined
+     */
+    private static String getCallerPluginName() {
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        for (StackTraceElement frame : stack) {
+            String cls = frame.getClassName();
+            // Skip JDK, server internals, Vault API, and XConomy's own frames
+            if (cls.startsWith("java.")
+                    || cls.startsWith("sun.")
+                    || cls.startsWith("org.bukkit.")
+                    || cls.startsWith("org.spigotmc.")
+                    || cls.startsWith("net.minecraft.")
+                    || cls.startsWith("net.milkbowl.vault.")
+                    || cls.startsWith("me.yic.xconomy.")) {
+                continue;
+            }
+            try {
+                Class<?> callerClass = Class.forName(cls);
+                // JavaPlugin.getProvidingPlugin accepts Class<?> and is the
+                // correct API — unlike PluginManager#whichPlugin which expects
+                // a specific JavaPlugin subclass.
+                Plugin owner = JavaPlugin.getProvidingPlugin(callerClass);
+                if (owner != null) {
+                    return owner.getName();
+                }
+            } catch (ClassNotFoundException | NoClassDefFoundError | IllegalArgumentException ignored) {
+                // Class not resolvable or not from a plugin — try next frame
+            }
+            // Last resort: return simple class name so the record is still useful
+            int dot = cls.lastIndexOf('.');
+            return dot >= 0 ? cls.substring(dot + 1) : cls;
+        }
+        return "Unknown";
     }
 
     private boolean CheckNonPlayerAccountEnable(String name) {
@@ -388,11 +437,9 @@ public class Vault extends AbstractEconomy {
             if (DataCon.hasaccountdatacache(name)) {
                 return true;
             }
-
             return DataCon.getPlayerData(name) == null;
         } else {
             return DataCon.containinfieldslist(name);
         }
     }
-
 }

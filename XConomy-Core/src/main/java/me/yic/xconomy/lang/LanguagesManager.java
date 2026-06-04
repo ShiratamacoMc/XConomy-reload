@@ -107,6 +107,31 @@ public class LanguagesManager {
         ll.add("help12");
         ll.add("help13");
         ll.add("help14");
+        // Transaction tracking
+        ll.add("help15");
+        ll.add("help16");
+        ll.add("help17");
+        ll.add("track_income_title");
+        ll.add("track_expense_title");
+        ll.add("track_income_text");
+        ll.add("track_expense_text");
+        ll.add("track_no_records");
+        ll.add("track_statistics");
+        ll.add("track_cleanup_success");
+        ll.add("track_cleanup_confirm");
+        ll.add("track_type_pay_send");
+        ll.add("track_type_pay_receive");
+        ll.add("track_type_admin_give");
+        ll.add("track_type_admin_take");
+        ll.add("track_type_admin_set");
+        ll.add("track_type_plugin_give");
+        ll.add("track_type_plugin_take");
+        ll.add("track_type_plugin_set");
+        ll.add("track_type_system");
+        ll.add("track_type_admin");
+        ll.add("track_type_unknown");
+        ll.add("console_name");
+        ll.add("track_view_other_no_permission");
         return ll;
 
     }

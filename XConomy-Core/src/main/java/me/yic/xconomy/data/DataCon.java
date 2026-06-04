@@ -30,6 +30,7 @@ import me.yic.xconomy.data.syncdata.PlayerData;
 import me.yic.xconomy.data.syncdata.SyncBalanceAll;
 import me.yic.xconomy.data.syncdata.SyncData;
 import me.yic.xconomy.data.syncdata.SyncDelData;
+import me.yic.xconomy.data.tracking.TraceManager;
 import me.yic.xconomy.info.MessageConfig;
 import me.yic.xconomy.info.RecordInfo;
 import me.yic.xconomy.info.SyncChannalType;
@@ -135,6 +136,75 @@ public class DataCon {
 
         RecordInfo ri = new RecordInfo(type, command, comment);
 
+        // Parse tracking information — determine transaction_type for every code path
+        if (comment instanceof String) {
+            String commentStr = (String) comment;
+            if (commentStr.startsWith("PAY_SEND:")) {
+                // Explicit player-to-player pay (expense leg)
+                try {
+                    UUID toUid = UUID.fromString(commentStr.substring(9));
+                    ri.withTracking(u, toUid, "PAY_SEND");
+                } catch (IllegalArgumentException ignored) {}
+            } else if (commentStr.startsWith("PAY_RECEIVE:")) {
+                // Explicit player-to-player pay (income leg)
+                try {
+                    UUID fromUid = UUID.fromString(commentStr.substring(12));
+                    ri.withTracking(fromUid, u, "PAY_RECEIVE");
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+
+        // For non-pay types, set transaction_type if it hasn't been set yet
+        if (ri.getTransactionType() == null) {
+            if (type.equals("ADMIN_COMMAND")) {
+                if (isAdd != null && isAdd) {
+                    ri.withTracking(null, u, "ADMIN_GIVE");
+                } else if (isAdd != null && !isAdd) {
+                    ri.withTracking(u, null, "ADMIN_TAKE");
+                } else {
+                    ri.withTracking(null, u, "ADMIN_SET");
+                }
+            } else if (type.equals("PLUGIN_API")) {
+                // command holds the caller plugin name passed via XConomyAPI
+                if (isAdd != null && isAdd) {
+                    ri.withTracking(null, u, "PLUGIN_API_GIVE");
+                } else if (isAdd != null && !isAdd) {
+                    ri.withTracking(u, null, "PLUGIN_API_TAKE");
+                } else {
+                    ri.withTracking(null, u, "PLUGIN_API_SET");
+                }
+            } else if (type.equals("PLUGIN")) {
+                // Called via Vault / Enterprise / Sponge Economy.
+                // command holds the caller plugin name detected by the hook.
+                if (isAdd != null && isAdd) {
+                    ri.withTracking(null, u, "PLUGIN_GIVE");
+                } else if (isAdd != null && !isAdd) {
+                    ri.withTracking(u, null, "PLUGIN_TAKE");
+                } else {
+                    ri.withTracking(null, u, "PLUGIN_SET");
+                }
+            }
+        }
+
+        // Add money flow tracing if enabled
+        if (XConomyLoad.Config.TRACKING_ENABLE) {
+            if (isAdd != null) {
+                if (isAdd && ri.getToUid() != null) {
+                    // This is an income transaction - generate new trace ID
+                    String traceId = TraceManager.generateTraceId();
+                    ri.withTraceInfo(traceId, ri.getFromUid() != null ? TraceManager.getLastIncome(ri.getFromUid()) : null);
+                } else if (!isAdd && ri.getFromUid() != null) {
+                    // This is an expense transaction - link to last income
+                    Long parentId = TraceManager.getLastIncome(u);
+                    if (parentId != null) {
+                        ri.withTraceInfo(TraceManager.generateTraceId(), parentId);
+                    } else {
+                        ri.withTraceInfo(TraceManager.generateTraceId(), null);
+                    }
+                }
+            }
+        }
+
         CallAPI.CallPlayerAccountEvent(u, pd.getName(), bal, amount, isAdd, ri);
 
         if (isAdd != null) {
@@ -147,15 +217,29 @@ public class DataCon {
 
         Cache.updateIntoCache(u, pd, newvalue, bal);
 
+        final UUID finalUid = u;
+        final Boolean finalIsAdd = isAdd;
         if (XConomyLoad.DConfig.canasync && AdapterManager.checkisMainThread()) {
             AdapterManager.runTaskAsynchronously(() -> {
-                DataLink.save(pd, isAdd, amount, ri);
+                Long transactionId = DataLink.save(pd, finalIsAdd, amount, ri);
+                // Record transaction ID for money flow tracing
+                if (XConomyLoad.Config.TRACKING_ENABLE && transactionId != null) {
+                    if (finalIsAdd != null && finalIsAdd && ri.getToUid() != null) {
+                        TraceManager.recordLastIncome(ri.getToUid(), transactionId);
+                    }
+                }
                 if (XConomyLoad.getSyncData_Enable()) {
                     SendMessTask(pd);
                 }
             });
         } else {
-            DataLink.save(pd, isAdd, amount, ri);
+            Long transactionId = DataLink.save(pd, isAdd, amount, ri);
+            // Record transaction ID for money flow tracing
+            if (XConomyLoad.Config.TRACKING_ENABLE && transactionId != null) {
+                if (isAdd != null && isAdd && ri.getToUid() != null) {
+                    TraceManager.recordLastIncome(ri.getToUid(), transactionId);
+                }
+            }
             if (XConomyLoad.getSyncData_Enable()) {
                 SendMessTask(pd);
             }

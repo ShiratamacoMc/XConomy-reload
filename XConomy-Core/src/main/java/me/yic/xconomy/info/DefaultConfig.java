@@ -82,6 +82,14 @@ public class DefaultConfig {
     public int RE_X = config.getInt("Region-Thread.range-x");
     public int RE_Y = config.getInt("Region-Thread.range-y");
 
+    //==================================================
+    // Transaction Tracking Settings
+    public boolean TRACKING_ENABLE = config.getBoolean("Transaction-Tracking.enable");
+    public int TRACKING_RETENTION_DAYS = config.getInt("Transaction-Tracking.retention-days");
+    public boolean TRACKING_AUTO_CLEANUP = config.getBoolean("Transaction-Tracking.auto-cleanup");
+    public String TRACKING_CLEANUP_TIME = config.getString("Transaction-Tracking.cleanup-time");
+    public int TRACKING_RECORDS_PER_PAGE = Math.max(config.getInt("Transaction-Tracking.records-per-page"), 5);
+
     private int getrankingsize() {
         return Math.min(config.getInt("Settings.ranking-size"), 100);
     }
