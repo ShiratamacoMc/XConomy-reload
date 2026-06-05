@@ -65,7 +65,7 @@ public class DataBaseConfig {
                         EnableConnectionPool = !AdapterManager.foundvaultpe;
                     } catch (UnsupportedClassVersionError e) {
                         EnableConnectionPool = false;
-                        XConomy.getInstance().logger("connection-pool-unsupport", 1, null);
+                        XConomy.getInstance().logger(null, 1, "Connection pool not supported (Java version too old)");
                     }
                 }
             } catch (ClassNotFoundException e) {

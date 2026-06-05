@@ -67,7 +67,7 @@ public class XConomyLoad{
         // Initialize transaction tracking
         if (Config.TRACKING_ENABLE && DConfig.isMySQL()) {
             TransactionCleanup.scheduleAutoCleanup();
-            XConomy.getInstance().logger("交易追踪系统已启用", 0, null);
+            XConomy.getInstance().logger(null, 0, "Transaction tracking system enabled");
         }
     }
 

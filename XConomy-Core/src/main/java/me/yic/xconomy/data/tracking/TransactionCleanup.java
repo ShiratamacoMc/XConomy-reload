@@ -57,7 +57,7 @@ public class TransactionCleanup {
 
         scheduleNext(initialDelaySeconds, retentionDays);
 
-        XConomy.getInstance().logger("Transaction auto cleanup scheduled at " + cleanupTime, 0, null);
+        XConomy.getInstance().logger(null, 0, "Transaction auto cleanup scheduled at " + cleanupTime);
     }
 
     /**
@@ -75,9 +75,6 @@ public class TransactionCleanup {
             }
 
             int deleted = cleanupOldRecords(retentionDays);
-            if (deleted > 0) {
-                XConomy.getInstance().logger("Auto cleanup: Deleted " + deleted + " old transaction records", 0, null);
-            }
 
             // Reschedule for the next day
             if (cleanupEnabled) {
@@ -111,9 +108,11 @@ public class TransactionCleanup {
             deleted = statement.executeUpdate();
             statement.close();
 
-            XConomy.getInstance().logger("Cleaned up " + deleted + " transaction records older than " + days + " days", 0, null);
+            if (deleted > 0) {
+                XConomy.getInstance().logger(null, 0, "Cleaned up " + deleted + " transaction records older than " + days + " days");
+            }
         } catch (SQLException e) {
-            XConomy.getInstance().logger("Error cleaning up old records", 1, null);
+            XConomy.getInstance().logger(null, 1, "Error cleaning up old records");
             e.printStackTrace();
         } finally {
             if (connection != null) {
@@ -149,7 +148,7 @@ public class TransactionCleanup {
             long delayMillis = target.getTimeInMillis() - now.getTimeInMillis();
             return delayMillis / 1000;
         } catch (Exception e) {
-            XConomy.getInstance().logger("Invalid cleanup time format: " + timeString, 1, null);
+            XConomy.getInstance().logger(null, 1, "Invalid cleanup time format: " + timeString);
             // Default to 24 hours from now
             return TimeUnit.HOURS.toSeconds(24);
         }

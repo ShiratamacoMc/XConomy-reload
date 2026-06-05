@@ -78,7 +78,7 @@ public class SQL {
                 database.closeHikariConnection(connection);
 
             } catch (SQLException ignored) {
-                XConomy.getInstance().logger("Get 'wait_timeout' error", 1, null);
+                XConomy.getInstance().logger(null, 1, "Get 'wait_timeout' error");
             }
         }
 
@@ -193,12 +193,12 @@ public class SQL {
                 }
                 
                 statement.close();
-                XConomy.getInstance().logger("Upgraded transaction record table for tracking", 0, null);
+                XConomy.getInstance().logger(null, 0, "Upgraded transaction record table for tracking");
             }
             
             database.closeHikariConnection(connection);
         } catch (SQLException e) {
-            XConomy.getInstance().logger("Error upgrading record table", 1, null);
+            XConomy.getInstance().logger(null, 1, "Error upgrading record table");
             e.printStackTrace();
         }
     }

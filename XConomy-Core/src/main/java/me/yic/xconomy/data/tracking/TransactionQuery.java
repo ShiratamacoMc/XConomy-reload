@@ -63,7 +63,7 @@ public class TransactionQuery {
             rs.close();
             statement.close();
         } catch (SQLException e) {
-            XConomy.getInstance().logger("Error querying income transactions", 1, null);
+            XConomy.getInstance().logger(null, 1, "Error querying income transactions");
             e.printStackTrace();
         } finally {
             if (connection != null) {
@@ -106,7 +106,7 @@ public class TransactionQuery {
             rs.close();
             statement.close();
         } catch (SQLException e) {
-            XConomy.getInstance().logger("Error querying expense transactions", 1, null);
+            XConomy.getInstance().logger(null, 1, "Error querying expense transactions");
             e.printStackTrace();
         } finally {
             if (connection != null) {
@@ -162,7 +162,7 @@ public class TransactionQuery {
             expenseRs.close();
             expenseStmt.close();
         } catch (SQLException e) {
-            XConomy.getInstance().logger("Error querying transaction statistics", 1, null);
+            XConomy.getInstance().logger(null, 1, "Error querying transaction statistics");
             e.printStackTrace();
         } finally {
             if (connection != null) {

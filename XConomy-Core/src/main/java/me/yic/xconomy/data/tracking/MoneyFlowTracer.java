@@ -70,7 +70,7 @@ public class MoneyFlowTracer {
             }
 
         } catch (Exception e) {
-            XConomy.getInstance().logger("Error tracing money flow", 1, null);
+            XConomy.getInstance().logger(null, 1, "Error tracing money flow");
             e.printStackTrace();
         }
 
