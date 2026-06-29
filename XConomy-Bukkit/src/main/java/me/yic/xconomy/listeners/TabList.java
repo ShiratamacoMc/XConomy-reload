@@ -24,6 +24,7 @@ import me.yic.xconomy.data.syncdata.PlayerData;
 import me.yic.xconomy.data.tracking.TrackPageCache;
 import me.yic.xconomy.lang.MessagesManager;
 import me.yic.xconomy.utils.TabListCon;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
@@ -36,8 +37,30 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class TabList implements TabCompleter {
+
+    /**
+     * 获取在线玩家名称列表
+     */
+    private List<String> getOnlinePlayerNames() {
+        return Bukkit.getOnlinePlayers().stream()
+                .map(Player::getName)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 获取玩家列表用于Tab补全
+     * 优先使用缓存列表，如果为空则使用在线玩家列表
+     */
+    private List<String> getPlayerListForTab() {
+        List<String> cached = TabListCon.get_Tab_PlayerList();
+        if (cached == null || cached.isEmpty()) {
+            return getOnlinePlayerNames();
+        }
+        return cached;
+    }
 
 
     @Override
@@ -77,7 +100,7 @@ public class TabList implements TabCompleter {
                         TRACK_SUB.add("income");
                         TRACK_SUB.add("expense");
                         if (commandSender.isOp() || commandSender.hasPermission("xconomy.admin.track.other")) {
-                            TRACK_SUB.addAll(TabListCon.get_Tab_PlayerList());
+                            TRACK_SUB.addAll(getPlayerListForTab());
                         }
                         if (commandSender.isOp() || commandSender.hasPermission("xconomy.admin.track.cleanup")) {
                             TRACK_SUB.add("cleanup");
@@ -135,7 +158,7 @@ public class TabList implements TabCompleter {
                         StringUtil.copyPartialMatches(args[0], COMMANDS_payperm, completions);
                     } else if (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("remove")) {
                         if (args.length == 2) {
-                            StringUtil.copyPartialMatches(args[1], TabListCon.get_Tab_PlayerList(), completions);
+                            StringUtil.copyPartialMatches(args[1], getPlayerListForTab(), completions);
                         } else if (args.length == 3 && args[0].equalsIgnoreCase("set")) {
                             COMMANDS_payperm.add("true");
                             COMMANDS_payperm.add("false");
@@ -149,7 +172,7 @@ public class TabList implements TabCompleter {
             case "paytoggle":{
                 if (commandSender.isOp() || commandSender.hasPermission("xconomy.admin.paytoggle")) {
                     if (args.length == 1) {
-                        StringUtil.copyPartialMatches(args[0], TabListCon.get_Tab_PlayerList(), completions);
+                        StringUtil.copyPartialMatches(args[0], getPlayerListForTab(), completions);
                     }
                 }
                 Collections.sort(completions);
@@ -165,7 +188,7 @@ public class TabList implements TabCompleter {
                     }
                     StringUtil.copyPartialMatches(args[0], COMMANDS_baltop, completions);
                 } else if (args.length == 2) {
-                    StringUtil.copyPartialMatches(args[1], TabListCon.get_Tab_PlayerList(), completions);
+                    StringUtil.copyPartialMatches(args[1], getPlayerListForTab(), completions);
                 }
                 Collections.sort(completions);
                 break;
@@ -173,7 +196,7 @@ public class TabList implements TabCompleter {
             case "pay": {
                 if (args.length == 1) {
                     if (commandSender.isOp() || commandSender.hasPermission("xconomy.user.pay")) {
-                        StringUtil.copyPartialMatches(args[0], TabListCon.get_Tab_PlayerList(), completions);
+                        StringUtil.copyPartialMatches(args[0], getPlayerListForTab(), completions);
                     }
                 }
                 Collections.sort(completions);
@@ -193,7 +216,7 @@ public class TabList implements TabCompleter {
                 if (args.length == 1) {
                     // /money <?>
                     List<String> candidates = new ArrayList<>();
-                    if (canViewOther) candidates.addAll(TabListCon.get_Tab_PlayerList());
+                    if (canViewOther) candidates.addAll(getPlayerListForTab());
                     if (canGive) candidates.add("give");
                     if (canTake) candidates.add("take");
                     if (canSet)  candidates.add("set");
@@ -205,7 +228,7 @@ public class TabList implements TabCompleter {
                     if (sub.equals("give") || sub.equals("take") || sub.equals("set")) {
                         if (canAdmin) {
                             // 玩家名 + 通配符 *
-                            List<String> players = new ArrayList<>(TabListCon.get_Tab_PlayerList());
+                            List<String> players = new ArrayList<>(getPlayerListForTab());
                             players.add("*");
                             StringUtil.copyPartialMatches(args[1], players, completions);
                         }

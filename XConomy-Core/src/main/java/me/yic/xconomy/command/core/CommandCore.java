@@ -281,6 +281,11 @@ public class CommandCore {
                 helplist.add(translateColorCodes("help17"));
             }
         }
+        if (sender.isOp()) {
+            helplist.add(translateColorCodes("help18"));
+            helplist.add(translateColorCodes("help19"));
+            helplist.add(translateColorCodes("help20"));
+        }
         Integer maxipages;
         if (helplist.size() % XConomyLoad.Config.LINES_PER_PAGE == 0) {
             maxipages = helplist.size() / XConomyLoad.Config.LINES_PER_PAGE;
