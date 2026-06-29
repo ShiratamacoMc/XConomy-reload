@@ -1,0 +1,56 @@
+name: Build & Upload Artifacts
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+
+      - name: Upload XConomy-Bukkit
+        uses: actions/upload-artifact@v4
+        with:
+          name: XConomy-Bukkit
+          path: XConomy-Bukkit/target/*.jar
+
+      - name: Upload XConomy-Sponge7
+        uses: actions/upload-artifact@v4
+        with:
+          name: XConomy-Sponge7
+          path: XConomy-Sponge7/target/*.jar
+
+      - name: Upload XConomy-Sponge8
+        uses: actions/upload-artifact@v4
+        with:
+          name: XConomy-Sponge8
+          path: XConomy-Sponge8/target/*.jar
+
+      - name: Upload XConomy-Paper
+        uses: actions/upload-artifact@v4
+        with:
+          name: XConomy-Paper
+          path: XConomy-Paper/target/*.jar
+
+      - name: Upload XConomy-Core
+        uses: actions/upload-artifact@v4
+        with:
+          name: XConomy-Core
+          path: XConomy-Core/target/*.jar
