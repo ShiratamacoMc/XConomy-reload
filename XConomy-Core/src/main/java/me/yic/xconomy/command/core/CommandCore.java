@@ -25,6 +25,7 @@ import me.yic.xconomy.adapter.comp.CPlayer;
 import me.yic.xconomy.adapter.comp.CSender;
 import me.yic.xconomy.data.DataCon;
 import me.yic.xconomy.data.DataFormat;
+import me.yic.xconomy.data.DataMigration;
 import me.yic.xconomy.data.caches.Cache;
 import me.yic.xconomy.data.syncdata.PlayerData;
 import me.yic.xconomy.data.syncdata.SyncMessage;
@@ -75,6 +76,44 @@ public class CommandCore {
 
                         sendMessages(sender, PREFIX + translateColorCodes(MessageConfig.DELETE_DATA_ADMIN).replace("%player%", pd.getName()));
 
+                        return true;
+                    }
+                    if (args.length == 2 && args[0].equalsIgnoreCase("migrate")) {
+                        String targetType = args[1];
+                        
+                        if (!targetType.equalsIgnoreCase("SQLite") && !targetType.equalsIgnoreCase("MySQL")) {
+                            sendMessages(sender, PREFIX + "§c使用方法: /xconomy migrate <SQLite|MySQL>");
+                            return true;
+                        }
+                        
+                        sendMessages(sender, PREFIX + "§e开始数据迁移，请勿关闭服务器...");
+                        
+                        // 异步执行迁移
+                        AdapterManager.runTaskAsynchronously(() -> {
+                            DataMigration.migrate(targetType, new DataMigration.MigrationCallback() {
+                                @Override
+                                public void onStart(String sourceType, String targetType) {
+                                    sendMessages(sender, PREFIX + "§e正在从 " + sourceType + " 迁移到 " + targetType);
+                                }
+                                
+                                @Override
+                                public void onProgress(String message) {
+                                    sendMessages(sender, PREFIX + "§e" + message);
+                                }
+                                
+                                @Override
+                                public void onComplete(int successCount, int totalCount) {
+                                    sendMessages(sender, PREFIX + "§a迁移完成！成功迁移 " + successCount + "/" + totalCount + " 条数据");
+                                    sendMessages(sender, PREFIX + "§a请修改 database.yml 配置文件切换数据库类型，然后重启服务器");
+                                }
+                                
+                                @Override
+                                public void onError(String error) {
+                                    sendMessages(sender, PREFIX + "§c迁移失败: " + error);
+                                }
+                            });
+                        });
+                        
                         return true;
                     }
                 }

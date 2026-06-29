@@ -53,12 +53,21 @@ public class TabList implements TabCompleter {
                     if (commandSender.isOp()) {
                         COMMANDS_xc.add("reload");
                         COMMANDS_xc.add("deldata");
+                        COMMANDS_xc.add("migrate");
                     }
                     if (XConomyLoad.Config.TRACKING_ENABLE) {
                         COMMANDS_xc.add("track");
                     }
                     StringUtil.copyPartialMatches(args[0], COMMANDS_xc, completions);
 
+                } else if (args.length == 2) {
+                    if (args[0].equalsIgnoreCase("migrate") && commandSender.isOp()) {
+                        // /xconomy migrate <SQLite|MySQL>
+                        List<String> DB_TYPES = new ArrayList<>();
+                        DB_TYPES.add("SQLite");
+                        DB_TYPES.add("MySQL");
+                        StringUtil.copyPartialMatches(args[1], DB_TYPES, completions);
+                    }
                 } else if (args.length >= 2 && args[0].equalsIgnoreCase("track")
                         && XConomyLoad.Config.TRACKING_ENABLE) {
 
