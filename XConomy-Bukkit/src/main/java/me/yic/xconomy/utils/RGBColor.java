@@ -27,6 +27,9 @@ public class RGBColor {
     private static final Pattern pattern = Pattern.compile("#([a-fA-F0-9]{6})");
 
     public static String translateHexColorCodes(String message) {
+        if (message == null) {
+            return "";
+        }
         if (MCVersion.hexsupport) {
             Matcher matcher = pattern.matcher(message);
 

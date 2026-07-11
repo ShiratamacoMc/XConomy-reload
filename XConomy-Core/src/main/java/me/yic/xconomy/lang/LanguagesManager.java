@@ -111,6 +111,9 @@ public class LanguagesManager {
         ll.add("help15");
         ll.add("help16");
         ll.add("help17");
+        ll.add("help18");
+        ll.add("help19");
+        ll.add("help20");
         ll.add("track_income_title");
         ll.add("track_expense_title");
         ll.add("track_income_text");
