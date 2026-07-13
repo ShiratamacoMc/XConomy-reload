@@ -18,6 +18,7 @@
  */
 package me.yic.xconomy.data.tracking;
 
+import me.yic.xconomy.XConomyLoad;
 import me.yic.xconomy.data.sql.SQL;
 
 import java.sql.Connection;
@@ -82,6 +83,10 @@ public class TraceManager {
      * 从数据库查询玩家最近一次收入交易的ID
      */
     private static Long queryLastIncomeFromDB(UUID playerUUID) {
+        if (!XConomyLoad.isTransactionTrackingEnabled()) {
+            return null;
+        }
+
         Long id = null;
         Connection connection = null;
         try {

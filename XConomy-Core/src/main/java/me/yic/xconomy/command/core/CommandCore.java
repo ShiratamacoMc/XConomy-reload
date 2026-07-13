@@ -272,7 +272,7 @@ public class CommandCore {
             helplist.add(translateColorCodes("help13"));
             helplist.add(translateColorCodes("help14"));
         }
-        if (XConomyLoad.Config.TRACKING_ENABLE) {
+        if (XConomyLoad.isTransactionTrackingEnabled()) {
             helplist.add(translateColorCodes("help15"));
             if (sender.isOp() | sender.hasPermission("xconomy.admin.track.other")) {
                 helplist.add(translateColorCodes("help16"));

@@ -36,7 +36,7 @@ public class TransactionCleanup {
      * Schedule automatic cleanup task
      */
     public static void scheduleAutoCleanup() {
-        if (!XConomyLoad.Config.TRACKING_ENABLE || !XConomyLoad.Config.TRACKING_AUTO_CLEANUP) {
+        if (!XConomyLoad.isTransactionTrackingEnabled() || !XConomyLoad.Config.TRACKING_AUTO_CLEANUP) {
             return;
         }
 

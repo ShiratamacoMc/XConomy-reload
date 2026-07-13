@@ -41,7 +41,7 @@ public class CommandTrack extends CommandCore {
             ThreadLocal.withInitial(() -> new SimpleDateFormat("MM-dd HH:mm"));
 
     public static boolean onCommand(CSender sender, String[] args) {
-        if (!XConomyLoad.Config.TRACKING_ENABLE) {
+        if (!XConomyLoad.isTransactionTrackingEnabled()) {
             sendMessages(sender, PREFIX + MessagesManager.systemMessage("§c交易追踪功能未启用"));
             return true;
         }

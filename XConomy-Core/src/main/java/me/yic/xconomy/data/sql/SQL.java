@@ -149,7 +149,7 @@ public class SQL {
             database.closeHikariConnection(connection);
 
             // Upgrade table for tracking if needed
-            if (XConomyLoad.DConfig.isMySQL() && XConomyLoad.Config.TRACKING_ENABLE) {
+            if (XConomyLoad.isTransactionTrackingEnabled()) {
                 upgradeRecordTableForTracking();
             }
 
@@ -583,7 +583,7 @@ public class SQL {
                 String sd = (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")).format(dd);
                 Long insertedId = null;
                 
-                if (XConomyLoad.Config.TRACKING_ENABLE) {
+                if (XConomyLoad.isTransactionTrackingEnabled()) {
                     query = "INSERT INTO " + tableRecordName + "(type,uid,player,balance,amount,operation,command,comment,datetime,from_uid,to_uid,transaction_type,server_id,trace_id,parent_transaction_id) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
                     PreparedStatement statement = co.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS);
                     statement.setString(1, ri.getType());

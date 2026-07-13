@@ -68,9 +68,12 @@ public class XConomyLoad{
         DataFormat.load();
 
         // Initialize transaction tracking
-        if (Config.TRACKING_ENABLE && DConfig.isMySQL()) {
+        if (isTransactionTrackingEnabled()) {
             TransactionCleanup.scheduleAutoCleanup();
             XConomy.getInstance().logger(null, 0, "Transaction tracking system enabled");
+        } else if (Config.TRACKING_ENABLE) {
+            XConomy.getInstance().logger(null, 1,
+                    "Transaction tracking requires MySQL/MariaDB and Settings.transaction-record: true; tracking has been disabled");
         }
     }
 
@@ -94,6 +97,11 @@ public class XConomyLoad{
 
     public static boolean getSyncData_Enable(){
         return !Config.SYNCDATA_TYPE.equals(SyncChannalType.OFF);
+    }
+
+    public static boolean isTransactionTrackingEnabled() {
+        return Config != null && DConfig != null && Config.TRACKING_ENABLE
+                && Config.TRANSACTION_RECORD && DConfig.isMySQL();
     }
 
 }

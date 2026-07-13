@@ -184,7 +184,7 @@ public class DataCon {
         }
 
         // Add money flow tracing if enabled
-        if (XConomyLoad.Config.TRACKING_ENABLE) {
+        if (XConomyLoad.isTransactionTrackingEnabled()) {
             if (isAdd != null) {
                 if (isAdd && ri.getToUid() != null) {
                     // This is an income transaction - generate new trace ID
@@ -220,7 +220,7 @@ public class DataCon {
             AdapterManager.runTaskAsynchronously(() -> {
                 Long transactionId = DataLink.save(pd, finalIsAdd, amount, ri);
                 // Record transaction ID for money flow tracing
-                if (XConomyLoad.Config.TRACKING_ENABLE && transactionId != null) {
+                if (XConomyLoad.isTransactionTrackingEnabled() && transactionId != null) {
                     if (finalIsAdd != null && finalIsAdd && ri.getToUid() != null) {
                         TraceManager.recordLastIncome(ri.getToUid(), transactionId);
                     }
@@ -232,7 +232,7 @@ public class DataCon {
         } else {
             Long transactionId = DataLink.save(pd, isAdd, amount, ri);
             // Record transaction ID for money flow tracing
-            if (XConomyLoad.Config.TRACKING_ENABLE && transactionId != null) {
+            if (XConomyLoad.isTransactionTrackingEnabled() && transactionId != null) {
                 if (isAdd != null && isAdd && ri.getToUid() != null) {
                     TraceManager.recordLastIncome(ri.getToUid(), transactionId);
                 }
