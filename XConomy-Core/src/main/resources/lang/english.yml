@@ -1,5 +1,5 @@
 translation_authors: "YiC, MrTibo"
-# Messages support MiniMessage formatting. Legacy & and section color codes remain supported.
+# Messages only support MiniMessage formatting. Legacy & and section color codes not supported.
 prefix: '<gold>[XConomy] '
 balance: '<green>Balance: %balance%'
 balance_other: '<green>%player%''s balance: %balance%'

@@ -1,5 +1,5 @@
 translation_authors: "None"
-# 消息支持 MiniMessage 格式，旧版 & 和 § 颜色代码仍然兼容。
+# 消息支持 MiniMessage 格式，请不要使用旧版格式
 prefix: '<gold>[XConomy]'
 balance: '<green>你的余额: %balance%'
 balance_other: '<green>%player% 的余额: %balance%'
