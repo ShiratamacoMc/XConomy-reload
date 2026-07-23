@@ -6,7 +6,7 @@ import me.yic.xconomy.XConomyLoad;
 import me.yic.xconomy.adapter.iPlugin;
 import me.yic.xconomy.data.syncdata.PlayerData;
 import me.yic.xconomy.utils.UUIDMode;
-import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
@@ -20,6 +20,8 @@ import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("unused")
 public class CPlugin implements iPlugin {
+
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
 
     @Override
     public CPlayer getplayer(PlayerData pd) {
@@ -55,7 +57,7 @@ public class CPlugin implements iPlugin {
 
     @Override
     public void broadcastMessage(String message) {
-        Bukkit.broadcast(Component.text(message));
+        Bukkit.broadcast(MINI_MESSAGE.deserialize(message));
     }
 
     @Override

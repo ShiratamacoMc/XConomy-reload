@@ -23,6 +23,7 @@ import me.yic.xconomy.XConomy;
 import me.yic.xconomy.XConomyLoad;
 import me.yic.xconomy.adapter.comp.CPlayer;
 import me.yic.xconomy.adapter.comp.CSender;
+import me.yic.xconomy.command.CommandRegistry;
 import me.yic.xconomy.data.DataCon;
 import me.yic.xconomy.data.DataFormat;
 import me.yic.xconomy.data.DataMigration;
@@ -45,7 +46,12 @@ public class CommandCore {
     protected static String PREFIX = translateColorCodes("prefix");
 
     public static boolean onCommand(CSender sender, String commandName, String[] args) {
-        switch (commandName) {
+        String resolvedCommand = CommandRegistry.resolve(commandName);
+        if (resolvedCommand == null) {
+            sendHelpMessage(sender, 1);
+            return true;
+        }
+        switch (resolvedCommand) {
             case "xconomy": {
                 if (sender.isOp()) {
                     if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
@@ -56,13 +62,13 @@ public class CommandCore {
                         // 重新加载 PREFIX
                         PREFIX = translateColorCodes("prefix");
                         
-                        sendMessages(sender, PREFIX + "§a配置文件和message.yml重载成功");
+                        sendMessages(sender, PREFIX + "<green>配置文件和message.yml重载成功");
                         return true;
                     }
                     if (args.length == 2 && args[0].equalsIgnoreCase("deldata")) {
 
                         if (check()) {
-                            sendMessages(sender, PREFIX + MessagesManager.systemMessage("§cBC模式开启的情况下,无法在无人的服务器中使用OP命令"));
+                            sendMessages(sender, PREFIX + MessagesManager.systemMessage("<red>BC模式开启的情况下,无法在无人的服务器中使用OP命令"));
                             return true;
                         }
 
@@ -82,34 +88,34 @@ public class CommandCore {
                         String targetType = args[1];
                         
                         if (!targetType.equalsIgnoreCase("SQLite") && !targetType.equalsIgnoreCase("MySQL")) {
-                            sendMessages(sender, PREFIX + "§c使用方法: /xconomy migrate <SQLite|MySQL>");
+                            sendUsage(sender, "usage_xconomy_migrate");
                             return true;
                         }
                         
-                        sendMessages(sender, PREFIX + "§e开始数据迁移，请勿关闭服务器...");
+                        sendMessages(sender, PREFIX + "<yellow>开始数据迁移，请勿关闭服务器...");
                         
                         // 异步执行迁移
                         AdapterManager.runTaskAsynchronously(() -> {
                             DataMigration.migrate(targetType, new DataMigration.MigrationCallback() {
                                 @Override
                                 public void onStart(String sourceType, String targetType) {
-                                    sendMessages(sender, PREFIX + "§e正在从 " + sourceType + " 迁移到 " + targetType);
+                                    sendMessages(sender, PREFIX + "<yellow>正在从 " + sourceType + " 迁移到 " + targetType);
                                 }
                                 
                                 @Override
                                 public void onProgress(String message) {
-                                    sendMessages(sender, PREFIX + "§e" + message);
+                                    sendMessages(sender, PREFIX + "<yellow>" + message);
                                 }
                                 
                                 @Override
                                 public void onComplete(int successCount, int totalCount) {
-                                    sendMessages(sender, PREFIX + "§a迁移完成！成功迁移 " + successCount + "/" + totalCount + " 条数据");
-                                    sendMessages(sender, PREFIX + "§a请修改 database.yml 配置文件切换数据库类型，然后重启服务器");
+                                    sendMessages(sender, PREFIX + "<green>迁移完成！成功迁移 " + successCount + "/" + totalCount + " 条数据");
+                                    sendMessages(sender, PREFIX + "<green>请修改 database.yml 配置文件切换数据库类型，然后重启服务器");
                                 }
                                 
                                 @Override
                                 public void onError(String error) {
-                                    sendMessages(sender, PREFIX + "§c迁移失败: " + error);
+                                    sendMessages(sender, PREFIX + "<red>迁移失败: " + error);
                                 }
                             });
                         });
@@ -117,7 +123,7 @@ public class CommandCore {
                         return true;
                     }
                 }
-                if (args.length >= 2 && args[0].equalsIgnoreCase("track")) {
+                if (args.length >= 1 && args[0].equalsIgnoreCase("track")) {
                     return CommandTrack.onCommand(sender, args);
                 }
                 if (args.length == 1 && args[0].equalsIgnoreCase("help")) {
@@ -125,19 +131,30 @@ public class CommandCore {
                     return true;
                 }
                 if (args.length == 2 && args[0].equalsIgnoreCase("help")) {
-                    if (isDouble(args[1])) {
-                        if (Integer.parseInt(args[1]) > 0) {
-                            sendHelpMessage(sender, Integer.valueOf(args[1]));
-                        } else {
-                            sendHelpMessage(sender, 1);
-                        }
+                    Integer page = parsePositiveInteger(args[1]);
+                    if (page == null) {
+                        sendUsage(sender, "usage_xconomy_help");
                     } else {
-                        sendHelpMessage(sender, 1);
+                        sendHelpMessage(sender, page);
                     }
                     return true;
                 }
-                showVersion(sender);
-                break;
+                if (args.length == 0) {
+                    showVersion(sender);
+                    return true;
+                }
+                if (args[0].equalsIgnoreCase("help")) {
+                    sendUsage(sender, "usage_xconomy_help");
+                } else if (sender.isOp() && args[0].equalsIgnoreCase("reload")) {
+                    sendUsage(sender, "usage_xconomy_reload");
+                } else if (sender.isOp() && args[0].equalsIgnoreCase("deldata")) {
+                    sendUsage(sender, "usage_xconomy_deldata");
+                } else if (sender.isOp() && args[0].equalsIgnoreCase("migrate")) {
+                    sendUsage(sender, "usage_xconomy_migrate");
+                } else {
+                    sendUsage(sender, "usage_xconomy_help");
+                }
+                return true;
             }
 
             case "paypermission": {
@@ -149,6 +166,10 @@ public class CommandCore {
             }
 
             case "balancetop": {
+                return CommandBalancetop.onCommand(sender, args);
+            }
+
+            case "ebalancetop": {
                 return CommandBalancetop.onCommand(sender, args);
             }
 
@@ -235,12 +256,30 @@ public class CommandCore {
         return AdapterManager.translateColorCodes(message);
     }
 
+    protected static void sendUsage(CSender sender, String usageKey, String... replacements) {
+        String usage = translateColorCodes(usageKey);
+        for (int index = 0; index + 1 < replacements.length; index += 2) {
+            usage = usage.replace(replacements[index], replacements[index + 1]);
+        }
+        sendMessages(sender, PREFIX + translateColorCodes("invalid_usage")
+                .replace("%usage%", usage));
+    }
+
+    protected static Integer parsePositiveInteger(String value) {
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
     public static void showVersion(CSender sender) {
-        sender.sendMessage(PREFIX + "§6XConomy §f(Version: "
-                + XConomy.PVersion + ") §6|§7 Author: §f" + MessagesManager.getAuthor());
+        sender.sendMessage(PREFIX + "<gold>XConomy <white>(Version: "
+                + XConomy.PVersion + ") <gold>|<gray> Author: <white>" + MessagesManager.getAuthor());
         String trs = MessagesManager.getTranslatorS();
         if (trs != null) {
-            sender.sendMessage(PREFIX + "§7Translator (system): §f" + trs);
+            sender.sendMessage(PREFIX + "<gray>Translator (system): <white>" + trs);
         }
     }
 
@@ -260,6 +299,7 @@ public class CommandCore {
         }
         if (sender.isOp() | sender.hasPermission("xconomy.admin.set")) {
             helplist.add(translateColorCodes("help7"));
+            helplist.add(translateColorCodes("help21"));
         }
         if (sender.isOp() | sender.hasPermission("xconomy.admin.balancetop")) {
             helplist.add(translateColorCodes("help10"));
@@ -292,7 +332,9 @@ public class CommandCore {
         } else {
             maxipages = helplist.size() / XConomyLoad.Config.LINES_PER_PAGE + 1;
         }
-        if (num > maxipages) {
+        if (num < 1) {
+            num = 1;
+        } else if (num > maxipages) {
             num = maxipages;
         }
         sendMessages(sender, translateColorCodes("help_title_full").replace("%page%", num + "/" + maxipages));
@@ -303,6 +345,11 @@ public class CommandCore {
             }
             indexpage += 1;
         }
+        int previousPage = Math.max(1, num - 1);
+        int nextPage = Math.min(maxipages, num + 1);
+        sendMessages(sender, translateColorCodes("help_footer")
+                .replace("%previous_page%", String.valueOf(previousPage))
+                .replace("%next_page%", String.valueOf(nextPage)));
     }
 
     protected static void sendRankingMessage(CSender sender, Integer num) {

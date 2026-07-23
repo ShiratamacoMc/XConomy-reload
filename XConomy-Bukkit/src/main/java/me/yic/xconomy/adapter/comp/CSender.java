@@ -36,12 +36,14 @@ public class CSender implements iSender {
 
     @Override
     public void sendMessage(String message){
-        sender.sendMessage(message);
+        sender.sendMessage(CChat.toLegacy(message));
     }
 
     @Override
     public void sendMessage(String[] message){
-        sender.sendMessage(message);
+        for (String line : message) {
+            sendMessage(line);
+        }
     }
 
     @Override

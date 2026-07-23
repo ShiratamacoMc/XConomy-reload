@@ -59,12 +59,12 @@ public class Vsync {
             oos.writeUTF(sv);
             String svv = sv;
             if (svv.contains(".")) {
-                svv = "versions §f" + svv;
+                svv = "versions " + svv;
             } else {
-                svv = "§fold versions";
+                svv = "old versions";
             }
             if (!sv.equals(XConomyVelocity.syncversion)) {
-                XConomyVelocity.getInstance().logger.warn("§cReceived data from " + svv + ", §cunable to synchronize, Current plugin version §f" + XConomyVelocity.syncversion);
+                XConomyVelocity.getInstance().logger.warn("Received data from " + svv + ", unable to synchronize, Current plugin version " + XConomyVelocity.syncversion);
                 return;
             }
 

@@ -54,10 +54,10 @@ public class CommandPayPermission extends CommandCore{
                 }
             } else if (args.length == 2 && args[0].equalsIgnoreCase("remove")) {
                 PlayerData pd = DataCon.getPlayerData(args[1]);
-                UUID targetUUID = pd.getUniqueId();
-                if (targetUUID == null) {
+                if (pd == null) {
                     sendMessages(sender, PREFIX + translateColorCodes(MessageConfig.NO_ACCOUNT));
                 } else {
+                    UUID targetUUID = pd.getUniqueId();
                     String realname = pd.getName();
                     PermissionINFO.setPaymentPermission(targetUUID, null);
                     sendMessages(sender, translateColorCodes("personal_permissions_change").replace("%permission%", "pay")
@@ -66,9 +66,10 @@ public class CommandPayPermission extends CommandCore{
                 }
                 return true;
             }
-            sendHelpMessage(sender, 1);
+            sendUsage(sender, "usage_paypermission");
             return true;
         }
+        sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
         return true;
     }
 

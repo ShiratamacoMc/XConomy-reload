@@ -19,6 +19,8 @@
 package me.yic.xconomy;
 
 import me.yic.xconomy.adapter.comp.CConfig;
+import me.yic.xconomy.command.CommandDefinition;
+import me.yic.xconomy.command.CommandRegistry;
 import me.yic.xconomy.data.DataLink;
 import me.yic.xconomy.data.ImportData;
 import me.yic.xconomy.depend.LoadEconomy;
@@ -132,16 +134,8 @@ public class XConomy extends JavaPlugin {
             bukkitCommandMap.setAccessible(true);
             CommandMap commandMap = (CommandMap) bukkitCommandMap.get(Bukkit.getServer());
 
-            registerCommand(commandMap, "xconomy",     java.util.Arrays.asList("xc"));
-            registerCommand(commandMap, "money",       java.util.Collections.emptyList());
-            registerCommand(commandMap, "balance",     java.util.Arrays.asList("bal"));
-            registerCommand(commandMap, "balancetop",  java.util.Arrays.asList("baltop"));
-            registerCommand(commandMap, "pay",         java.util.Collections.emptyList());
-            registerCommand(commandMap, "paytoggle",   java.util.Collections.emptyList());
-            registerCommand(commandMap, "paypermission", java.util.Arrays.asList("payperm"));
-
-            if (XConomyLoad.Config.ECO_COMMAND) {
-                coveress(commandMap);
+            for (CommandDefinition command : CommandRegistry.getCommands(XConomyLoad.Config.ECO_COMMAND)) {
+                registerCommand(commandMap, command);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -286,13 +280,9 @@ public class XConomy extends JavaPlugin {
         return new File(XConomy.getInstance().getDataFolder(), "playerdata");
     }
 
-    private void coveress(CommandMap commandMap) {
-        commandMap.register("economy",   "xconomy", new EconomyCommand("economy",  java.util.Arrays.asList("eco", "eeconomy")));
-        commandMap.register("ebalancetop","xconomy", new EconomyCommand("ebalancetop", java.util.Arrays.asList("ebaltop")));
-    }
-
-    private void registerCommand(CommandMap commandMap, String name, java.util.List<String> aliases) {
-        EconomyCommand cmd = new EconomyCommand(name, aliases);
+    private void registerCommand(CommandMap commandMap, CommandDefinition definition) {
+        String name = definition.getName();
+        EconomyCommand cmd = new EconomyCommand(definition);
         if (name.equals("paypermission")) {
             cmd.setPermission("xconomy.admin.permission");
         }

@@ -59,12 +59,12 @@ public class BCsync implements Listener {
             oos.writeUTF(sv);
             String svv = sv;
             if (svv.contains(".")) {
-                svv = "versions §f" + svv;
+                svv = "versions " + svv;
             } else {
-                svv = "§fold versions";
+                svv = "old versions";
             }
             if (!sv.equals(XConomyBungee.syncversion)) {
-                XConomyBungee.getInstance().getLogger().warning("§cReceived data from " + svv + ", §cunable to synchronize, Current plugin version §f" + XConomyBungee.syncversion);
+                XConomyBungee.getInstance().getLogger().warning("Received data from " + svv + ", unable to synchronize, Current plugin version " + XConomyBungee.syncversion);
                 return;
             }
 

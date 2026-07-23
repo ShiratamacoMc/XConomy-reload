@@ -42,7 +42,7 @@ public class CommandTrack extends CommandCore {
 
     public static boolean onCommand(CSender sender, String[] args) {
         if (!XConomyLoad.isTransactionTrackingEnabled()) {
-            sendMessages(sender, PREFIX + MessagesManager.systemMessage("§c交易追踪功能未启用"));
+            sendMessages(sender, PREFIX + MessagesManager.systemMessage("<red>交易追踪功能未启用"));
             return true;
         }
 
@@ -54,7 +54,7 @@ public class CommandTrack extends CommandCore {
         // /xconomy track flow <transactionId>
 
         if (args.length < 2) {
-            sendTrackHelp(sender);
+            sendUsage(sender, "usage_track");
             return true;
         }
 
@@ -67,13 +67,23 @@ public class CommandTrack extends CommandCore {
                 return true;
             }
 
+            if (args.length > 3) {
+                sendUsage(sender, "usage_track_cleanup");
+                return true;
+            }
+
             int days = XConomyLoad.Config.TRACKING_RETENTION_DAYS;
-            if (args.length >= 3 && isDouble(args[2])) {
-                days = Integer.parseInt(args[2]);
+            if (args.length == 3) {
+                Integer requestedDays = parsePositiveInteger(args[2]);
+                if (requestedDays == null) {
+                    sendUsage(sender, "usage_track_cleanup");
+                    return true;
+                }
+                days = requestedDays;
             }
 
             if (days <= 0) {
-                sendMessages(sender, PREFIX + MessagesManager.systemMessage("§c无效的天数"));
+                sendMessages(sender, PREFIX + MessagesManager.systemMessage("<red>无效的天数"));
                 return true;
             }
 
@@ -95,14 +105,23 @@ public class CommandTrack extends CommandCore {
         if (subCommand.equals("income") || subCommand.equals("expense")) {
             // /xconomy track income/expense [page]
             if (!sender.isPlayer()) {
-                sendMessages(sender, PREFIX + MessagesManager.systemMessage("§c控制台必须指定玩家名"));
+                sendMessages(sender, PREFIX + MessagesManager.systemMessage("<red>控制台必须指定玩家名"));
                 return true;
             }
             targetUUID = sender.toPlayer().getUniqueId();
             playerName = sender.getName();
             trackType = subCommand;
-            if (args.length >= 3 && isDouble(args[2])) {
-                page = Integer.parseInt(args[2]);
+            if (args.length > 3) {
+                sendUsage(sender, "usage_track_self");
+                return true;
+            }
+            if (args.length == 3) {
+                Integer requestedPage = parsePositiveInteger(args[2]);
+                if (requestedPage == null) {
+                    sendUsage(sender, "usage_track_self");
+                    return true;
+                }
+                page = requestedPage;
             }
         } else {
             // /xconomy track <player> income/expense [page]
@@ -121,18 +140,27 @@ public class CommandTrack extends CommandCore {
             playerName = pd.getName();
 
             if (args.length < 3) {
-                sendTrackHelp(sender);
+                sendUsage(sender, "usage_track_other");
                 return true;
             }
 
             trackType = args[2].toLowerCase();
             if (!trackType.equals("income") && !trackType.equals("expense")) {
-                sendTrackHelp(sender);
+                sendUsage(sender, "usage_track_other");
                 return true;
             }
 
-            if (args.length >= 4 && isDouble(args[3])) {
-                page = Integer.parseInt(args[3]);
+            if (args.length > 4) {
+                sendUsage(sender, "usage_track_other");
+                return true;
+            }
+            if (args.length == 4) {
+                Integer requestedPage = parsePositiveInteger(args[3]);
+                if (requestedPage == null) {
+                    sendUsage(sender, "usage_track_other");
+                    return true;
+                }
+                page = requestedPage;
             }
         }
 

@@ -108,16 +108,6 @@ public class CommandBalance extends CommandCore{
         // 判断命令类型和长度
         int argsLength = args.length;
         
-        // 特殊处理：检测是否是批量操作 (使用 * 通配符)
-        boolean isBatchOperation = false;
-        if (argsLength >= 4 && args.length >= 2) {
-            String subCommand = args[0].toLowerCase();
-            if ((subCommand.equals("give") || subCommand.equals("take") || subCommand.equals("set"))
-                    && args[1].equals("*")) {
-                isBatchOperation = true;
-            }
-        }
-        
         // 处理原因消息
         StringBuilder reasonmessages = null;
         if (sender.isOp() | sender.hasPermission("xconomy.admin.give")
@@ -133,22 +123,34 @@ public class CommandBalance extends CommandCore{
             // /money - 查询自己余额
             return handleSelfBalance(sender);
 
-        } else if (argsLength == 2 && args[0].equalsIgnoreCase("look")) {
-            // /money look <玩家> - 查询玩家余额
+        }
+
+        if (args[0].equalsIgnoreCase("look")) {
+            if (argsLength != 2) {
+                sendUsage(sender, "usage_balance_look", "%command%", commandName);
+                return true;
+            }
             return handleOtherBalance(sender, args[1]);
-            
-        } else if (argsLength >= 3 && isBatchOperation) {
-            // /money give * <all|online> <金额> [原因] - 批量操作
-            return handleBatchOperation(sender, commandName, args, parsed, reasonmessages);
-            
-        } else if (argsLength >= 3) {
-            // /money give <玩家> <金额> [flags] - 单个玩家操作
-            return handleSinglePlayerOperation(sender, commandName, args, parsed, reasonmessages);
-            
-        } else {
-            sendHelpMessage(sender, 1);
+        }
+
+        String subCommand = args[0].toLowerCase();
+        if (!subCommand.equals("give") && !subCommand.equals("take") && !subCommand.equals("set")) {
+            sendUsage(sender, "usage_balance_subcommand", "%command%", commandName);
             return true;
         }
+
+        if (argsLength < 3) {
+            sendUsage(sender, argsLength == 2 && args[1].equals("*")
+                            ? "usage_balance_batch" : "usage_balance_single",
+                    "%command%", commandName, "%operation%", subCommand);
+            return true;
+        }
+
+        if (args[1].equals("*")) {
+            return handleBatchOperation(sender, commandName, args, parsed, reasonmessages);
+        }
+
+        return handleSinglePlayerOperation(sender, commandName, args, parsed, reasonmessages);
     }
 
     /**
@@ -156,7 +158,7 @@ public class CommandBalance extends CommandCore{
      */
     private static boolean handleSelfBalance(CSender sender) {
         if (!sender.isPlayer()) {
-            sendMessages(sender, PREFIX + MessagesManager.systemMessage("§6控制台无法使用该指令"));
+            sendMessages(sender, PREFIX + MessagesManager.systemMessage("<gold>控制台无法使用该指令"));
             return true;
         }
 
@@ -202,12 +204,12 @@ public class CommandBalance extends CommandCore{
                                                        StringBuilder reasonmessages) {
         if (!(sender.isOp() | sender.hasPermission("xconomy.admin.give")
                 | sender.hasPermission("xconomy.admin.take") | sender.hasPermission("xconomy.admin.set"))) {
-            sendHelpMessage(sender, 1);
+            sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
             return true;
         }
 
         if (check()) {
-            sendMessages(sender, PREFIX + MessagesManager.systemMessage("§cBC模式开启的情况下,无法在无人的服务器中使用OP命令"));
+            sendMessages(sender, PREFIX + MessagesManager.systemMessage("<red>BC模式开启的情况下,无法在无人的服务器中使用OP命令"));
             return true;
         }
 
@@ -221,6 +223,10 @@ public class CommandBalance extends CommandCore{
         }
 
         BigDecimal amount = DataFormat.formatString(amountStr);
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            sendMessages(sender, PREFIX + translateColorCodes("invalid_amount"));
+            return true;
+        }
         String amountFormatted = DataFormat.shown(amount);
 
         // 获取玩家数据
@@ -252,7 +258,7 @@ public class CommandBalance extends CommandCore{
         switch (subCommand) {
             case "give": {
                 if (!(sender.isOp() | sender.hasPermission("xconomy.admin.give"))) {
-                    sendHelpMessage(sender, 1);
+                    sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
                     return true;
                 }
 
@@ -302,7 +308,7 @@ public class CommandBalance extends CommandCore{
 
             case "take": {
                 if (!(sender.isOp() | sender.hasPermission("xconomy.admin.take"))) {
-                    sendHelpMessage(sender, 1);
+                    sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
                     return true;
                 }
 
@@ -351,7 +357,7 @@ public class CommandBalance extends CommandCore{
 
             case "set": {
                 if (!(sender.isOp() | sender.hasPermission("xconomy.admin.set"))) {
-                    sendHelpMessage(sender, 1);
+                    sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
                     return true;
                 }
 
@@ -386,7 +392,7 @@ public class CommandBalance extends CommandCore{
             }
 
             default: {
-                sendHelpMessage(sender, 1);
+                sendUsage(sender, "usage_balance_subcommand", "%command%", commandName);
                 break;
             }
         }
@@ -402,7 +408,7 @@ public class CommandBalance extends CommandCore{
         if (!(sender.isOp() | sender.hasPermission("xconomy.admin.give")
                 | sender.hasPermission("xconomy.admin.take")
                 | sender.hasPermission("xconomy.admin.set"))) {
-            sendHelpMessage(sender, 1);
+            sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
             return true;
         }
 
@@ -410,17 +416,19 @@ public class CommandBalance extends CommandCore{
         String scope = args[2]; // "all" or "online"
         
         if (args.length < 4) {
-            sendHelpMessage(sender, 1);
+            sendUsage(sender, "usage_balance_batch", "%command%", commandName,
+                    "%operation%", subCommand);
             return true;
         }
 
         if (!(scope.equalsIgnoreCase("all") | scope.equalsIgnoreCase("online"))) {
-            sendHelpMessage(sender, 1);
+            sendUsage(sender, "usage_balance_batch", "%command%", commandName,
+                    "%operation%", subCommand);
             return true;
         }
 
         if (XConomyLoad.Config.UUIDMODE.equals(UUIDMode.SEMIONLINE) && scope.equalsIgnoreCase("online")) {
-            sendMessages(sender, PREFIX + MessagesManager.systemMessage("§c该指令不支持在半正版模式中使用"));
+            sendMessages(sender, PREFIX + MessagesManager.systemMessage("<red>该指令不支持在半正版模式中使用"));
             return true;
         }
 
@@ -430,7 +438,7 @@ public class CommandBalance extends CommandCore{
         }
 
         if (check()) {
-            sendMessages(sender, PREFIX + MessagesManager.systemMessage("§cBC模式开启的情况下,无法在无人的服务器中使用OP命令"));
+            sendMessages(sender, PREFIX + MessagesManager.systemMessage("<red>BC模式开启的情况下,无法在无人的服务器中使用OP命令"));
             return true;
         }
 
@@ -441,7 +449,8 @@ public class CommandBalance extends CommandCore{
         }
 
         BigDecimal amount = DataFormat.formatString(amountStr);
-        if (!subCommand.equals("set") && amount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (amount.compareTo(BigDecimal.ZERO) < 0
+                || (!subCommand.equals("set") && amount.compareTo(BigDecimal.ZERO) <= 0)) {
             sendMessages(sender, PREFIX + translateColorCodes("invalid_amount"));
             return true;
         }
@@ -469,7 +478,7 @@ public class CommandBalance extends CommandCore{
         switch (subCommand) {
             case "give": {
                 if (!(sender.isOp() | sender.hasPermission("xconomy.admin.give"))) {
-                    sendHelpMessage(sender, 1);
+                    sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
                     return true;
                 }
 
@@ -488,7 +497,7 @@ public class CommandBalance extends CommandCore{
 
             case "take": {
                 if (!(sender.isOp() | sender.hasPermission("xconomy.admin.take"))) {
-                    sendHelpMessage(sender, 1);
+                    sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
                     return true;
                 }
 
@@ -507,7 +516,7 @@ public class CommandBalance extends CommandCore{
 
             case "set": {
                 if (!(sender.isOp() | sender.hasPermission("xconomy.admin.set"))) {
-                    sendHelpMessage(sender, 1);
+                    sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
                     return true;
                 }
 
@@ -525,7 +534,7 @@ public class CommandBalance extends CommandCore{
             }
 
             default: {
-                sendHelpMessage(sender, 1);
+                sendUsage(sender, "usage_balance_subcommand", "%command%", commandName);
                 break;
             }
         }

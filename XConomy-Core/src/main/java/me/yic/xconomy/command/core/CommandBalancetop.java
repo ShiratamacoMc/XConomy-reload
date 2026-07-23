@@ -30,7 +30,6 @@ import java.util.UUID;
 public class CommandBalancetop extends CommandCore{
     public static boolean onCommand(CSender sender, String[] args) {
         if (args.length == 0 || args.length == 1) {
-
             if (!(sender.isOp() || sender.hasPermission("xconomy.user.balancetop"))) {
                 sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
                 return true;
@@ -44,22 +43,18 @@ public class CommandBalancetop extends CommandCore{
             if (args.length == 0) {
                 sendRankingMessage(sender, 1);
             } else {
-                if (isDouble(args[0])) {
-                    if (Integer.parseInt(args[0]) > 0) {
-                        sendRankingMessage(sender, Integer.valueOf(args[0]));
-                    } else {
-                        sendRankingMessage(sender, 1);
-                    }
+                Integer page = parsePositiveInteger(args[0]);
+                if (page != null) {
+                    sendRankingMessage(sender, page);
                 } else {
-                    sendRankingMessage(sender, 1);
+                    sendUsage(sender, "usage_balancetop_page");
                 }
             }
-
         } else if (args.length == 2) {
             if (args[0].equalsIgnoreCase("hide") || args[0].equalsIgnoreCase("display")) {
 
                 if (!(sender.isOp() || sender.hasPermission("xconomy.admin.balancetop"))) {
-                    sendHelpMessage(sender, 1);
+                    sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
                     return true;
                 }
 
@@ -78,8 +73,11 @@ public class CommandBalancetop extends CommandCore{
                     DataLink.setTopBalHide(targetUUID, 0);
                     sendMessages(sender, PREFIX + translateColorCodes("top_displayed").replace("%player%", args[1]));
                 }
-
+            } else {
+                sendUsage(sender, "usage_balancetop_visibility");
             }
+        } else {
+            sendUsage(sender, "usage_balancetop_page");
         }
         return true;
     }

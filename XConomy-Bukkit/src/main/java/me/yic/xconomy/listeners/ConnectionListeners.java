@@ -53,12 +53,12 @@ public class ConnectionListeners implements Listener {
         if (!(XConomyLoad.Config.CHECK_UPDATE & Updater.old)) {
             return;
         }
-        player.sendMessage("§f[XConomy]§b" + MessagesManager.systemMessage("发现新版本 ") + Updater.newVersion);
-        player.sendMessage("§f[XConomy]§ahttps://www.spigotmc.org/resources/xconomy.75669/");
+        player.sendMessage("<white>[XConomy]<aqua>" + MessagesManager.systemMessage("发现新版本 ") + Updater.newVersion);
+        player.sendMessage("<white>[XConomy]<green>https://www.spigotmc.org/resources/xconomy.75669/");
 
         if (XConomyLoad.Config.LANGUAGE.equalsIgnoreCase("Chinese")
                 | XConomyLoad.Config.LANGUAGE.equalsIgnoreCase("ChineseTW")) {
-            player.sendMessage("§f[XConomy]§ahttps://www.mcbbs.net/thread-962904-1-1.html");
+            player.sendMessage("<white>[XConomy]<green>https://www.mcbbs.net/thread-962904-1-1.html");
         }
 
     }

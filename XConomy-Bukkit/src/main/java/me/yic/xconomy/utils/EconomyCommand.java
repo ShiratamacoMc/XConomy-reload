@@ -19,6 +19,7 @@
 package me.yic.xconomy.utils;
 
 import me.yic.xconomy.command.core.CommandCore;
+import me.yic.xconomy.command.CommandDefinition;
 import me.yic.xconomy.adapter.comp.CSender;
 import me.yic.xconomy.listeners.TabList;
 import org.bukkit.command.Command;
@@ -33,19 +34,12 @@ public class EconomyCommand extends Command {
     private final String name;
     private final TabCompleter tabCompleter = new TabList();
 
-    public EconomyCommand(String name) {
-        super(name);
-        this.name = name;
-        this.description = "XConomy.";
-        this.usageMessage = "/<command>";
-    }
-
-    public EconomyCommand(String name, List<String> aliases) {
-        super(name);
-        this.name = name;
-        this.description = "XConomy.";
-        this.usageMessage = "/<command>";
-        this.setAliases(aliases);
+    public EconomyCommand(CommandDefinition definition) {
+        super(definition.getName());
+        this.name = definition.getName();
+        this.description = definition.getDescription();
+        this.usageMessage = definition.getUsage();
+        this.setAliases(definition.getAliases());
     }
 
     @Override

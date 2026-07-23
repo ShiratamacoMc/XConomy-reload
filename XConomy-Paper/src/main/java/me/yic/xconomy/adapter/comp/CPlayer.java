@@ -2,6 +2,7 @@ package me.yic.xconomy.adapter.comp;
 
 import me.yic.xconomy.XConomy;
 import me.yic.xconomy.adapter.iPlayer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -9,6 +10,8 @@ import java.util.UUID;
 
 @SuppressWarnings("unused")
 public class CPlayer implements iPlayer {
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+
     private final Player player;
 
     public CPlayer(Player player) {
@@ -31,12 +34,16 @@ public class CPlayer implements iPlayer {
 
     @Override
     public void sendMessage(String message) {
-        runOnPlayer(() -> player.sendMessage(message));
+        runOnPlayer(() -> player.sendMessage(MINI_MESSAGE.deserialize(message)));
     }
 
     @Override
     public void sendMessage(String[] message) {
-        runOnPlayer(() -> player.sendMessage(message));
+        runOnPlayer(() -> {
+            for (String line : message) {
+                player.sendMessage(MINI_MESSAGE.deserialize(line));
+            }
+        });
     }
 
     @Override

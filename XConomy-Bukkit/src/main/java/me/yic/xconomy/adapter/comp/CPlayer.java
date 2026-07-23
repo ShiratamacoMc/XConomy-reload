@@ -32,12 +32,14 @@ public class CPlayer implements iPlayer {
 
     @Override
     public void sendMessage(String message){
-        player.sendMessage(message);
+        player.sendMessage(CChat.toLegacy(message));
     }
 
     @Override
     public void sendMessage(String[] message){
-        player.sendMessage(message);
+        for (String line : message) {
+            sendMessage(line);
+        }
     }
 
     @Override

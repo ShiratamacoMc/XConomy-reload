@@ -2,12 +2,15 @@ package me.yic.xconomy.adapter.comp;
 
 import me.yic.xconomy.XConomy;
 import me.yic.xconomy.adapter.iSender;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 @SuppressWarnings("unused")
 public class CSender implements iSender {
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+
     private final CommandSender sender;
 
     public CSender(CommandSender sender) {
@@ -45,7 +48,7 @@ public class CSender implements iSender {
             new CPlayer((Player) sender).sendMessage(message);
         } else {
             Bukkit.getGlobalRegionScheduler().run(
-                    XConomy.getInstance(), task -> sender.sendMessage(message));
+                    XConomy.getInstance(), task -> sender.sendMessage(MINI_MESSAGE.deserialize(message)));
         }
     }
 
@@ -55,7 +58,11 @@ public class CSender implements iSender {
             new CPlayer((Player) sender).sendMessage(message);
         } else {
             Bukkit.getGlobalRegionScheduler().run(
-                    XConomy.getInstance(), task -> sender.sendMessage(message));
+                    XConomy.getInstance(), task -> {
+                        for (String line : message) {
+                            sender.sendMessage(MINI_MESSAGE.deserialize(line));
+                        }
+                    });
         }
     }
 }

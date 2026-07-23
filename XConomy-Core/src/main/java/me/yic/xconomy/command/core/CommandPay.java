@@ -39,7 +39,7 @@ import java.util.UUID;
 public class CommandPay extends CommandCore{
     public static boolean onCommand(CSender sender, String commandName, String[] args) {
         if (!sender.isPlayer()) {
-            sendMessages(sender, PREFIX + MessagesManager.systemMessage("§6控制台无法使用该指令"));
+            sendMessages(sender, PREFIX + MessagesManager.systemMessage("<gold>控制台无法使用该指令"));
             return true;
         }
 
@@ -61,7 +61,7 @@ public class CommandPay extends CommandCore{
         }
 
         if (args.length != 2) {
-            sendHelpMessage(sender, 1);
+            sendUsage(sender, "usage_pay", "%command%", commandName);
             return true;
         }
 

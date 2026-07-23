@@ -27,13 +27,10 @@ import me.yic.xconomy.data.caches.Cache;
 import me.yic.xconomy.data.syncdata.PlayerData;
 import me.yic.xconomy.info.MessageConfig;
 import me.yic.xconomy.info.PermissionINFO;
-import me.yic.xconomy.lang.MessagesManager;
-import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.math.BigDecimal;
-import java.util.Objects;
 
 public class Placeholder extends PlaceholderExpansion {
 
@@ -96,16 +93,14 @@ public class Placeholder extends PlaceholderExpansion {
                     int ii = Cache.baltop_papi.indexOf(username) + 1;
                     return Integer.toString(ii);
                 } else {
-                    return ChatColor.translateAlternateColorCodes('&',
-                            Objects.requireNonNull(MessagesManager.messageFile.getString("top_out"), "[XConomy] message.yml error"));
+                    return AdapterManager.translateColorCodes("top_out");
                 }
             } else {
                 if (Cache.baltop_papi.contains(player.getName())) {
                     int ii = Cache.baltop_papi.indexOf(player.getName()) + 1;
                     return Integer.toString(ii);
                 } else {
-                    return ChatColor.translateAlternateColorCodes('&',
-                            Objects.requireNonNull(MessagesManager.messageFile.getString("top_out"), "[XConomy] message.yml error"));
+                    return AdapterManager.translateColorCodes("top_out");
                 }
             }
         } else if (identifier.contains("top_balance_")) {

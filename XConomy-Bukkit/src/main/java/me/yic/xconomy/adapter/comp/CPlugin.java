@@ -53,7 +53,7 @@ public class CPlugin implements iPlugin {
 
     @Override
     public void broadcastMessage(String message) {
-        Bukkit.broadcastMessage(message);
+        Bukkit.broadcastMessage(CChat.toLegacy(message));
     }
 
     @Override

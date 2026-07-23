@@ -33,24 +33,26 @@ public class CommandPayToggle extends CommandCore{
     public static boolean onCommand(CSender sender, String[] args) {
         if (args.length == 0) {
             if (!sender.isPlayer()) {
-                sendMessages(sender, PREFIX + MessagesManager.systemMessage("§6控制台无法使用该指令"));
+                sendMessages(sender, PREFIX + MessagesManager.systemMessage("<gold>控制台无法使用该指令"));
                 return true;
             }
-            if (sender.isOp() || sender.hasPermission("xconomy.user.paytoggle")) {
-                PermissionINFO.setRPaymentPermission(DataCon.getPlayerData(sender.toPlayer().getUniqueId()).getUniqueId());
-                if (PermissionINFO.getRPaymentPermission(sender.toPlayer().getUniqueId())) {
-                    sendMessages(sender, translateColorCodes(MessageConfig.PAYTOGGLE_TRUE));
-                    syncpr(2, sender.toPlayer().getUniqueId(), true);
-                } else {
-                    sendMessages(sender, translateColorCodes(MessageConfig.PAYTOGGLE_FALSE));
-                    syncpr(2, sender.toPlayer().getUniqueId(), false);
-                }
+            if (!(sender.isOp() || sender.hasPermission("xconomy.user.paytoggle"))) {
+                sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
+                return true;
+            }
+            PermissionINFO.setRPaymentPermission(DataCon.getPlayerData(sender.toPlayer().getUniqueId()).getUniqueId());
+            if (PermissionINFO.getRPaymentPermission(sender.toPlayer().getUniqueId())) {
+                sendMessages(sender, translateColorCodes(MessageConfig.PAYTOGGLE_TRUE));
+                syncpr(2, sender.toPlayer().getUniqueId(), true);
+            } else {
+                sendMessages(sender, translateColorCodes(MessageConfig.PAYTOGGLE_FALSE));
+                syncpr(2, sender.toPlayer().getUniqueId(), false);
             }
             return true;
         } else if (args.length == 1) {
             if (sender.isOp() || sender.hasPermission("xconomy.admin.paytoggle")) {
                 if (check()) {
-                    sendMessages(sender, PREFIX + MessagesManager.systemMessage("§cBC模式开启的情况下,无法在无人的服务器中使用OP命令"));
+                    sendMessages(sender, PREFIX + MessagesManager.systemMessage("<red>BC模式开启的情况下,无法在无人的服务器中使用OP命令"));
                     return true;
                 }
                 PlayerData pd = DataCon.getPlayerData(args[0]);
@@ -83,7 +85,10 @@ public class CommandPayToggle extends CommandCore{
                 }
                 return true;
             }
+            sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
+            return true;
         }
+        sendUsage(sender, "usage_paytoggle");
         return true;
     }
 

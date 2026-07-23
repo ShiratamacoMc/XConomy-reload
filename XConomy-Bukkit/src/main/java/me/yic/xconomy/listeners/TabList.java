@@ -19,6 +19,7 @@
 package me.yic.xconomy.listeners;
 
 import me.yic.xconomy.XConomyLoad;
+import me.yic.xconomy.command.CommandRegistry;
 import me.yic.xconomy.data.DataCon;
 import me.yic.xconomy.data.syncdata.PlayerData;
 import me.yic.xconomy.data.tracking.TrackPageCache;
@@ -67,9 +68,13 @@ public class TabList implements TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String commandName, @NotNull String[] args) {
 
         final List<String> completions = new ArrayList<>();
-        switch (commandName) {
+        String resolvedCommand = CommandRegistry.resolve(commandName);
+        if (resolvedCommand == null) {
+            return completions;
+        }
+        switch (resolvedCommand) {
             case "xconomy":
-            case "xc": {
+            {
                 if (args.length == 1) {
                     List<String> COMMANDS_xc = new ArrayList<>();
                     COMMANDS_xc.add("help");
@@ -190,6 +195,20 @@ public class TabList implements TabCompleter {
                         COMMANDS_baltop.add("display");
                     }
                     StringUtil.copyPartialMatches(args[0], COMMANDS_baltop, completions);
+                } else if (args.length == 2) {
+                    StringUtil.copyPartialMatches(args[1], getPlayerListForTab(), completions);
+                }
+                Collections.sort(completions);
+                break;
+            }
+            case "ebalancetop": {
+                if (args.length == 1) {
+                    List<String> commands = new ArrayList<>();
+                    if (commandSender.isOp() || commandSender.hasPermission("xconomy.admin.balancetop")) {
+                        commands.add("hide");
+                        commands.add("display");
+                    }
+                    StringUtil.copyPartialMatches(args[0], commands, completions);
                 } else if (args.length == 2) {
                     StringUtil.copyPartialMatches(args[1], getPlayerListForTab(), completions);
                 }

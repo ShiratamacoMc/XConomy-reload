@@ -21,7 +21,6 @@ package me.yic.xconomy.data;
 import me.yic.xconomy.XConomyLoad;
 import me.yic.xconomy.adapter.comp.CChat;
 import me.yic.xconomy.info.DefaultConfig;
-import net.md_5.bungee.api.ChatColor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -88,12 +87,12 @@ public class DataFormat {
 
     public static String PEshownf(BigDecimal am) {
         if (am.compareTo(BigDecimal.ONE) == 0) {
-            return ChatColor.translateAlternateColorCodes('&', displayformat
+            return CChat.translateAlternateColorCodes('&', displayformat
                     .replace("%balance%", getformatbalance(am))
                     .replace("%format_balance%", getformatbalance(am))
                     .replace("%currencyname%", singularname));
         }
-        return ChatColor.translateAlternateColorCodes('&', displayformat
+        return CChat.translateAlternateColorCodes('&', displayformat
                 .replace("%balance%", getformatbalance(am))
                 .replace("%format_balance%", getformatbalance(am))
                 .replace("%currencyname%", pluralname));
