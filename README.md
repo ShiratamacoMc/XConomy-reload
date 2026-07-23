@@ -3,23 +3,23 @@
 因为原作者因为学业原因停止更新，因此由我继续更新
 
 
-Because the original author stopped updating due to academic reasons, so I'm continuing the updates.
+Because the original author stopped updating due to academic reasons, so I'm continuing the updates.  
 
 ## 改版的特性
-1. 支持玩家收入与支出查询
-2. 现代化的minimessage
-3. Folia的全量支持
-4. 支持最新版本
-5. 积极维护
-6. 更多细节优化...
+1. 支持玩家收入与支出查询  
+2. 现代化的minimessage  
+3. Folia的全量支持  
+4. 支持最新版本  
+5. 积极维护  
+6. 更多细节优化...  
 
-
-1. Supports player income and expenditure queries
-2. Modernized minimessage
-3. Full support for Folia
-4. Supports the latest version
-5. Active maintenance
-6. More detailed optimizations...
+## Reload Features
+1. Supports player income and expenditure queries  
+2. Modernized minimessage  
+3. Full support for Folia  
+4. Supports the latest version  
+5. Active maintenance  
+6. More detailed optimizations...  
 
 ## 关于 About
 基础经济插件，以Vault为前置，支持BossShop，QuickShop等这些使用Vault API的插件  
