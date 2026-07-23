@@ -44,6 +44,7 @@ public class DefaultConfig {
 
     public String LANGUAGE = config.getString("Settings.language");
     public boolean CHECK_UPDATE = config.getBoolean("Settings.check-update");
+    public boolean BSTATS = config.getBoolean("Settings.bstats");
     public int REFRESH_TIME = Math.max(config.getInt("Settings.refresh-time"), 30);
     public boolean ECO_COMMAND = config.getBoolean("Settings.eco-command");
     public boolean DISABLE_ESSENTIAL = config.getBoolean("Settings.disable-essentials");

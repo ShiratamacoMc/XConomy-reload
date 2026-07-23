@@ -20,6 +20,8 @@ package me.yic.xconomy.data.sql;
 
 import me.yic.xconomy.XConomy;
 import me.yic.xconomy.XConomyLoad;
+import me.yic.xconomy.data.BalanceMutationResult;
+import me.yic.xconomy.data.BalanceTransferResult;
 import me.yic.xconomy.data.DataFormat;
 import me.yic.xconomy.data.DataLink;
 import me.yic.xconomy.data.GetUUID;
@@ -33,11 +35,14 @@ import me.yic.xconomy.utils.UUIDMode;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 public class SQL {
+
+    private static final Object WRITE_LOCK = new Object();
 
     public static String tableName = "xconomy";
     public static String tableNonPlayerName = "xconomynon";
@@ -322,35 +327,203 @@ public class SQL {
         }
     }
 
-    public static Long save(PlayerData pd, Boolean isAdd, BigDecimal amount, RecordInfo ri) {
-        Connection connection = database.getConnectionAndCheck();
-        Long transactionId = null;
-        try {
-            String query = " set balance = ? where UID = ?";
-//            if (XConomyLoad.Config.DISABLE_CACHE) {
-            if (isAdd != null) {
-                if (isAdd) {
-                    query = " set balance = balance + ? where UID = ?";
+    public static BalanceMutationResult save(PlayerData pd, Boolean isAdd, BigDecimal amount, RecordInfo ri) {
+        synchronized (WRITE_LOCK) {
+            Connection connection = database.getConnectionAndCheck();
+            if (connection == null) {
+                return BalanceMutationResult.failure(BalanceMutationResult.Status.DATABASE_ERROR, pd.getBalance());
+            }
+
+            boolean previousAutoCommit = true;
+            try {
+                previousAutoCommit = connection.getAutoCommit();
+                connection.setAutoCommit(false);
+
+                String query = "update " + tableName + " set balance = ? where UID = ?";
+                if (isAdd != null) {
+                    if (isAdd) {
+                        query = "update " + tableName
+                                + " set balance = balance + ? where UID = ? and balance + ? <= ?";
+                    } else {
+                        query = "update " + tableName
+                                + " set balance = balance - ? where UID = ? and balance >= ?";
+                    }
+                }
+
+                int updated;
+                try (PreparedStatement statement = connection.prepareStatement(query)) {
+                    statement.setBigDecimal(1, amount);
+                    statement.setString(2, pd.getUniqueId().toString());
+                    if (isAdd != null) {
+                        statement.setBigDecimal(3, amount);
+                        if (isAdd) {
+                            statement.setBigDecimal(4, DataFormat.maxNumber);
+                        }
+                    }
+                    updated = statement.executeUpdate();
+                }
+
+                if (updated != 1) {
+                    BigDecimal currentBalance = readBalance(connection, pd.getUniqueId());
+                    connection.rollback();
+                    if (currentBalance == null) {
+                        return BalanceMutationResult.failure(BalanceMutationResult.Status.NOT_FOUND, pd.getBalance());
+                    }
+                    BalanceMutationResult.Status status = Boolean.FALSE.equals(isAdd)
+                            ? BalanceMutationResult.Status.INSUFFICIENT_FUNDS
+                            : BalanceMutationResult.Status.MAX_BALANCE;
+                    return BalanceMutationResult.failure(status, currentBalance);
+                }
+
+                BigDecimal newBalance = readBalance(connection, pd.getUniqueId());
+                if (newBalance == null) {
+                    connection.rollback();
+                    return BalanceMutationResult.failure(BalanceMutationResult.Status.NOT_FOUND, pd.getBalance());
+                }
+
+                PlayerData recordData = new PlayerData(pd.getUniqueId(), pd.getName(), newBalance);
+                Long transactionId = record(connection, recordData, isAdd, amount, newBalance, ri,
+                        ri.getFromUid(), ri.getToUid(), ri.getTransactionType());
+                connection.commit();
+                return BalanceMutationResult.success(newBalance, transactionId);
+            } catch (SQLException e) {
+                rollback(connection);
+                e.printStackTrace();
+                return BalanceMutationResult.failure(BalanceMutationResult.Status.DATABASE_ERROR, pd.getBalance());
+            } finally {
+                restoreAutoCommit(connection, previousAutoCommit);
+                database.closeHikariConnection(connection);
+            }
+        }
+    }
+
+    public static BalanceTransferResult transfer(PlayerData sender, PlayerData target,
+                                                 BigDecimal senderAmount, BigDecimal targetAmount,
+                                                 RecordInfo senderRecord, RecordInfo targetRecord) {
+        synchronized (WRITE_LOCK) {
+            Connection connection = database.getConnectionAndCheck();
+            if (connection == null) {
+                return BalanceTransferResult.failure(BalanceMutationResult.Status.DATABASE_ERROR,
+                        sender.getBalance(), target.getBalance());
+            }
+
+            boolean previousAutoCommit = true;
+            try {
+                previousAutoCommit = connection.getAutoCommit();
+                connection.setAutoCommit(false);
+
+                boolean senderFirst = sender.getUniqueId().toString()
+                        .compareTo(target.getUniqueId().toString()) < 0;
+                if (senderFirst) {
+                    if (!withdraw(connection, sender.getUniqueId(), senderAmount)) {
+                        return rollbackTransfer(connection, BalanceMutationResult.Status.INSUFFICIENT_FUNDS,
+                                sender, target);
+                    }
+                    if (!deposit(connection, target.getUniqueId(), targetAmount)) {
+                        return rollbackTransfer(connection, BalanceMutationResult.Status.MAX_BALANCE,
+                                sender, target);
+                    }
                 } else {
-                    query = " set balance = balance - ? where UID = ?";
+                    if (!deposit(connection, target.getUniqueId(), targetAmount)) {
+                        return rollbackTransfer(connection, BalanceMutationResult.Status.MAX_BALANCE,
+                                sender, target);
+                    }
+                    if (!withdraw(connection, sender.getUniqueId(), senderAmount)) {
+                        return rollbackTransfer(connection, BalanceMutationResult.Status.INSUFFICIENT_FUNDS,
+                                sender, target);
+                    }
+                }
+
+                BigDecimal senderBalance = readBalance(connection, sender.getUniqueId());
+                BigDecimal targetBalance = readBalance(connection, target.getUniqueId());
+                if (senderBalance == null || targetBalance == null) {
+                    return rollbackTransfer(connection, BalanceMutationResult.Status.NOT_FOUND, sender, target);
+                }
+
+                PlayerData senderData = new PlayerData(sender.getUniqueId(), sender.getName(), senderBalance);
+                PlayerData targetData = new PlayerData(target.getUniqueId(), target.getName(), targetBalance);
+                Long senderTransactionId = record(connection, senderData, false, senderAmount, senderBalance,
+                        senderRecord, senderRecord.getFromUid(), senderRecord.getToUid(),
+                        senderRecord.getTransactionType());
+                Long targetTransactionId = record(connection, targetData, true, targetAmount, targetBalance,
+                        targetRecord, targetRecord.getFromUid(), targetRecord.getToUid(),
+                        targetRecord.getTransactionType());
+
+                connection.commit();
+                return BalanceTransferResult.success(senderBalance, targetBalance,
+                        senderTransactionId, targetTransactionId);
+            } catch (SQLException e) {
+                rollback(connection);
+                e.printStackTrace();
+                return BalanceTransferResult.failure(BalanceMutationResult.Status.DATABASE_ERROR,
+                        sender.getBalance(), target.getBalance());
+            } finally {
+                restoreAutoCommit(connection, previousAutoCommit);
+                database.closeHikariConnection(connection);
+            }
+        }
+    }
+
+    private static boolean withdraw(Connection connection, UUID uuid, BigDecimal amount) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "update " + tableName + " set balance = balance - ? where UID = ? and balance >= ?")) {
+            statement.setBigDecimal(1, amount);
+            statement.setString(2, uuid.toString());
+            statement.setBigDecimal(3, amount);
+            return statement.executeUpdate() == 1;
+        }
+    }
+
+    private static boolean deposit(Connection connection, UUID uuid, BigDecimal amount) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "update " + tableName + " set balance = balance + ? where UID = ? and balance + ? <= ?")) {
+            statement.setBigDecimal(1, amount);
+            statement.setString(2, uuid.toString());
+            statement.setBigDecimal(3, amount);
+            statement.setBigDecimal(4, DataFormat.maxNumber);
+            return statement.executeUpdate() == 1;
+        }
+    }
+
+    private static BigDecimal readBalance(Connection connection, UUID uuid) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "select balance from " + tableName + " where UID = ?")) {
+            statement.setString(1, uuid.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getBigDecimal(1);
                 }
             }
-//            }
-            PreparedStatement statement = connection.prepareStatement("update " + tableName + query);
-//            if (!XConomyLoad.Config.DISABLE_CACHE) {
-//                statement.setDouble(1, pd.getBalance().doubleValue());
-//            } else {
-            statement.setDouble(1, amount.doubleValue());
-//            }
-            statement.setString(2, pd.getUniqueId().toString());
-            statement.executeUpdate();
-            statement.close();
+        }
+        return null;
+    }
+
+    private static BalanceTransferResult rollbackTransfer(Connection connection,
+                                                          BalanceMutationResult.Status status,
+                                                          PlayerData sender, PlayerData target)
+            throws SQLException {
+        connection.rollback();
+        BigDecimal senderBalance = readBalance(connection, sender.getUniqueId());
+        BigDecimal targetBalance = readBalance(connection, target.getUniqueId());
+        return BalanceTransferResult.failure(status,
+                senderBalance == null ? sender.getBalance() : senderBalance,
+                targetBalance == null ? target.getBalance() : targetBalance);
+    }
+
+    private static void rollback(Connection connection) {
+        try {
+            connection.rollback();
+        } catch (SQLException rollbackException) {
+            rollbackException.printStackTrace();
+        }
+    }
+
+    private static void restoreAutoCommit(Connection connection, boolean autoCommit) {
+        try {
+            connection.setAutoCommit(autoCommit);
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        transactionId = record(connection, pd, isAdd, amount, pd.getBalance(), ri, ri.getFromUid(), ri.getToUid(), ri.getTransactionType());
-        database.closeHikariConnection(connection);
-        return transactionId;
     }
 
     //public static void save(String type, PlayerData pd, Boolean isAdd,
@@ -395,37 +568,36 @@ public class SQL {
 
     public static void saveall(String targettype, List<UUID> players, BigDecimal amount, Boolean isAdd,
                                RecordInfo ri) {
+        if (targettype.equalsIgnoreCase("online") && (players == null || players.isEmpty())) {
+            return;
+        }
+
         Connection connection = database.getConnectionAndCheck();
         try {
+            String balanceUpdate;
+            if (isAdd == null) {
+                balanceUpdate = "balance = ?";
+            } else if (isAdd) {
+                balanceUpdate = "balance = balance + ?";
+            } else {
+                balanceUpdate = "balance = balance - ?";
+            }
+
             if (targettype.equalsIgnoreCase("all")) {
-                String query;
-                if (isAdd) {
-                    query = " set balance = balance + " + amount.doubleValue();
-                } else {
-                    query = " set balance = balance - " + amount.doubleValue();
-                }
-                PreparedStatement statement = connection.prepareStatement("update " + tableName + query);
+                PreparedStatement statement = connection.prepareStatement(
+                        "update " + tableName + " set " + balanceUpdate);
+                statement.setBigDecimal(1, amount);
                 statement.executeUpdate();
                 statement.close();
             } else if (targettype.equalsIgnoreCase("online")) {
-                StringBuilder query;
-                if (isAdd) {
-                    query = new StringBuilder(" set balance = balance + " + amount + " where");
-                } else {
-                    query = new StringBuilder(" set balance = balance - " + amount + " where");
+                String placeholders = String.join(", ", Collections.nCopies(players.size(), "?"));
+                PreparedStatement statement = connection.prepareStatement(
+                        "update " + tableName + " set " + balanceUpdate
+                                + " where UID in (" + placeholders + ")");
+                statement.setBigDecimal(1, amount);
+                for (int i = 0; i < players.size(); i++) {
+                    statement.setString(i + 2, players.get(i).toString());
                 }
-                int jsm = players.size();
-                int js = 1;
-
-                for (UUID u : players) {
-                    if (js == jsm) {
-                        query.append(" UID = '").append(u.toString()).append("'");
-                    } else {
-                        query.append(" UID = '").append(u.toString()).append("' OR");
-                        js = js + 1;
-                    }
-                }
-                PreparedStatement statement = connection.prepareStatement("update " + tableName + query);
                 statement.executeUpdate();
                 statement.close();
             }

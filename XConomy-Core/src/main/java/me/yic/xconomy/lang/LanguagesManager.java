@@ -88,6 +88,7 @@ public class LanguagesManager {
         ll.add("no_receive_permission");
         ll.add("no_permission");
         ll.add("no_data");
+        ll.add("no_online_players");
         ll.add("delete_data");
         ll.add("delete_data_admin");
         ll.add("global_permissions_change");

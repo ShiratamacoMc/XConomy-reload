@@ -112,7 +112,8 @@ public class CommandBalance extends CommandCore{
         boolean isBatchOperation = false;
         if (argsLength >= 4 && args.length >= 2) {
             String subCommand = args[0].toLowerCase();
-            if ((subCommand.equals("give") || subCommand.equals("take")) && args[1].equals("*")) {
+            if ((subCommand.equals("give") || subCommand.equals("take") || subCommand.equals("set"))
+                    && args[1].equals("*")) {
                 isBatchOperation = true;
             }
         }
@@ -131,10 +132,10 @@ public class CommandBalance extends CommandCore{
         if (argsLength == 0) {
             // /money - 查询自己余额
             return handleSelfBalance(sender);
-            
-        } else if (argsLength == 1) {
-            // /money <玩家> - 查询玩家余额
-            return handleOtherBalance(sender, args[0]);
+
+        } else if (argsLength == 2 && args[0].equalsIgnoreCase("look")) {
+            // /money look <玩家> - 查询玩家余额
+            return handleOtherBalance(sender, args[1]);
             
         } else if (argsLength >= 3 && isBatchOperation) {
             // /money give * <all|online> <金额> [原因] - 批量操作
@@ -172,7 +173,7 @@ public class CommandBalance extends CommandCore{
     }
 
     /**
-     * 处理查询其他玩家余额: /money <玩家>
+     * 处理查询其他玩家余额: /money look <玩家>
      */
     private static boolean handleOtherBalance(CSender sender, String targetName) {
         if (!(sender.isOp() || sender.hasPermission("xconomy.user.balance.other"))) {
@@ -399,7 +400,8 @@ public class CommandBalance extends CommandCore{
                                                 String[] args, ParsedArgs parsed, 
                                                 StringBuilder reasonmessages) {
         if (!(sender.isOp() | sender.hasPermission("xconomy.admin.give")
-                | sender.hasPermission("xconomy.admin.take"))) {
+                | sender.hasPermission("xconomy.admin.take")
+                | sender.hasPermission("xconomy.admin.set"))) {
             sendHelpMessage(sender, 1);
             return true;
         }
@@ -422,6 +424,11 @@ public class CommandBalance extends CommandCore{
             return true;
         }
 
+        if (scope.equalsIgnoreCase("online") && AdapterManager.PLUGIN.getOnlinePlayersisEmpty()) {
+            sendMessages(sender, PREFIX + translateColorCodes("no_online_players"));
+            return true;
+        }
+
         if (check()) {
             sendMessages(sender, PREFIX + MessagesManager.systemMessage("§cBC模式开启的情况下,无法在无人的服务器中使用OP命令"));
             return true;
@@ -434,13 +441,15 @@ public class CommandBalance extends CommandCore{
         }
 
         BigDecimal amount = DataFormat.formatString(amountStr);
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (!subCommand.equals("set") && amount.compareTo(BigDecimal.ZERO) <= 0) {
             sendMessages(sender, PREFIX + translateColorCodes("invalid_amount"));
             return true;
         }
 
         String amountFormatted = DataFormat.shown(amount);
-        String target = scope.equalsIgnoreCase("online") ? "OnlinePlayer" : "AllPlayer";
+        String target = scope.equalsIgnoreCase("online")
+                ? translateColorCodes("online_players")
+                : translateColorCodes("all_players");
 
         // 构建原因：优先使用 -r flag，其次使用位置参数
         if (reasonmessages == null && args.length >= 5) {
@@ -485,6 +494,25 @@ public class CommandBalance extends CommandCore{
 
                 DataCon.changeallplayerdata(scope, "ADMIN_COMMAND", amount, false, com, reasonmessages);
                 sendMessages(sender, PREFIX + translateColorCodes("money_take")
+                        .replace("%player%", target)
+                        .replace("%amount%", amountFormatted));
+
+                if (reasonmessages != null && reasonmessages.length() > 0) {
+                    String message = PREFIX + reasonmessages;
+                    AdapterManager.PLUGIN.broadcastMessage(message);
+                    broadcastSendMessage(true, null, message);
+                }
+                break;
+            }
+
+            case "set": {
+                if (!(sender.isOp() | sender.hasPermission("xconomy.admin.set"))) {
+                    sendHelpMessage(sender, 1);
+                    return true;
+                }
+
+                DataCon.changeallplayerdata(scope, "ADMIN_COMMAND", amount, null, com, reasonmessages);
+                sendMessages(sender, PREFIX + translateColorCodes("money_set")
                         .replace("%player%", target)
                         .replace("%amount%", amountFormatted));
 

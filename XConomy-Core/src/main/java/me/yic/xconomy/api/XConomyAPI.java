@@ -21,6 +21,7 @@ package me.yic.xconomy.api;
 import me.yic.xconomy.AdapterManager;
 import me.yic.xconomy.XConomy;
 import me.yic.xconomy.XConomyLoad;
+import me.yic.xconomy.data.BalanceMutationResult;
 import me.yic.xconomy.data.DataCon;
 import me.yic.xconomy.data.DataFormat;
 import me.yic.xconomy.data.DataLink;
@@ -88,7 +89,14 @@ public class XConomyAPI {
         if (XConomyLoad.getSyncData_Enable() & AdapterManager.BanModiftyBalance()) {
             return 1;
         }
-        BigDecimal bal = getPlayerData(u).getBalance();
+        if (amount == null || amount.signum() < 0) {
+            return 4;
+        }
+        PlayerData playerData = getPlayerData(u);
+        if (playerData == null) {
+            return 4;
+        }
+        BigDecimal bal = playerData.getBalance();
         if (isadd != null) {
             if (isadd) {
                 if (ismaxnumber(bal.add(amount))) {
@@ -100,8 +108,18 @@ public class XConomyAPI {
                 }
             }
         }
-        DataCon.changeplayerdata("PLUGIN_API", u, amount, isadd, pluginname, null);
-        return 0;
+        BalanceMutationResult result = DataCon.changePlayerData(
+                "PLUGIN_API", u, amount, isadd, pluginname, null);
+        if (result.isSuccess()) {
+            return 0;
+        }
+        if (result.getStatus() == BalanceMutationResult.Status.INSUFFICIENT_FUNDS) {
+            return 2;
+        }
+        if (result.getStatus() == BalanceMutationResult.Status.MAX_BALANCE) {
+            return 3;
+        }
+        return 4;
     }
 
     @Deprecated
@@ -119,6 +137,9 @@ public class XConomyAPI {
     }
 
     public int changeNonPlayerBalance(String account, BigDecimal amount, Boolean isadd, String pluginname) {
+        if (amount == null || amount.signum() < 0) {
+            return 4;
+        }
         BigDecimal bal = getNonPlayerBalance(account);
         if (isadd != null) {
             if (isadd) {

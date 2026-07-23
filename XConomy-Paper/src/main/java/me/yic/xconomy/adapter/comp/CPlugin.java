@@ -78,7 +78,8 @@ public class CPlugin implements iPlugin {
 
     @Override
     public void runTaskLaterAsynchronously(Runnable runnable, long time) {
-        Bukkit.getAsyncScheduler().runDelayed(XConomy.getInstance(), scheduledTask -> runnable.run(), time, TimeUnit.MILLISECONDS);
+        Bukkit.getAsyncScheduler().runDelayed(
+                XConomy.getInstance(), scheduledTask -> runnable.run(), time * 50L, TimeUnit.MILLISECONDS);
     }
 
     @Override

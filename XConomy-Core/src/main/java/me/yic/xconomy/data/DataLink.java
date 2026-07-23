@@ -136,8 +136,14 @@ public class DataLink{
         return SQL.sumBal();
     }
 
-    public static Long save(PlayerData pd, Boolean isAdd, BigDecimal amount, RecordInfo ri) {
+    public static BalanceMutationResult save(PlayerData pd, Boolean isAdd, BigDecimal amount, RecordInfo ri) {
         return SQL.save(pd, isAdd, amount, ri);
+    }
+
+    public static BalanceTransferResult transfer(PlayerData sender, PlayerData target,
+                                                 BigDecimal senderAmount, BigDecimal targetAmount,
+                                                 RecordInfo senderRecord, RecordInfo targetRecord) {
+        return SQL.transfer(sender, target, senderAmount, targetAmount, senderRecord, targetRecord);
     }
 
     public static void newPlayer(CPlayer a) {

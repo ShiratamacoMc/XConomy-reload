@@ -20,6 +20,7 @@ package me.yic.xconomy.depend.economy;
 
 import me.yic.xconomy.AdapterManager;
 import me.yic.xconomy.XConomyLoad;
+import me.yic.xconomy.data.BalanceMutationResult;
 import me.yic.xconomy.data.DataCon;
 import me.yic.xconomy.data.DataFormat;
 import me.yic.xconomy.data.DataLink;
@@ -121,6 +122,9 @@ public class Vault implements Economy {
             return new EconomyResponse(0.0D, 0.0D, EconomyResponse.ResponseType.FAILURE,
                     "[BungeeCord] No player in server");
         }
+        if (isInvalidAmount(amount)) {
+            return invalidAmountResponse();
+        }
 
         double bal = getBalance(name);
         BigDecimal amountFormatted = DataFormat.formatdouble(amount);
@@ -139,8 +143,9 @@ public class Vault implements Economy {
             return new EconomyResponse(0.0D, 0.0D, EconomyResponse.ResponseType.FAILURE, "No Account!");
         }
 
-        DataCon.changeplayerdata("PLUGIN", pd.getUniqueId(), amountFormatted, true, getCallerPluginName(), null);
-        return new EconomyResponse(amount, bal, EconomyResponse.ResponseType.SUCCESS, "");
+        BalanceMutationResult result = DataCon.changePlayerData(
+                "PLUGIN", pd.getUniqueId(), amountFormatted, true, getCallerPluginName(), null);
+        return toEconomyResponse(result, amount);
     }
 
     @Override
@@ -148,6 +153,9 @@ public class Vault implements Economy {
         if (AdapterManager.BanModiftyBalance()) {
             return new EconomyResponse(0.0D, 0.0D, EconomyResponse.ResponseType.FAILURE,
                     "[BungeeCord] No player in server");
+        }
+        if (isInvalidAmount(amount)) {
+            return invalidAmountResponse();
         }
 
         if (DataCon.getPlayerData(pp.getUniqueId()) == null) {
@@ -163,8 +171,9 @@ public class Vault implements Economy {
             return new EconomyResponse(0.0D, bal, EconomyResponse.ResponseType.FAILURE, "Max balance!");
         }
 
-        DataCon.changeplayerdata("PLUGIN", pp.getUniqueId(), amountFormatted, true, getCallerPluginName(), null);
-        return new EconomyResponse(amount, bal, EconomyResponse.ResponseType.SUCCESS, "");
+        BalanceMutationResult result = DataCon.changePlayerData(
+                "PLUGIN", pp.getUniqueId(), amountFormatted, true, getCallerPluginName(), null);
+        return toEconomyResponse(result, amount);
     }
 
     @Override
@@ -314,6 +323,9 @@ public class Vault implements Economy {
             return new EconomyResponse(0.0D, 0.0D, EconomyResponse.ResponseType.FAILURE,
                     "[BungeeCord] No player in server");
         }
+        if (isInvalidAmount(amount)) {
+            return invalidAmountResponse();
+        }
 
         double bal = getBalance(name);
         BigDecimal amountFormatted = DataFormat.formatdouble(amount);
@@ -332,8 +344,9 @@ public class Vault implements Economy {
             return new EconomyResponse(0.0D, 0.0D, EconomyResponse.ResponseType.FAILURE, "No Account!");
         }
 
-        DataCon.changeplayerdata("PLUGIN", pd.getUniqueId(), amountFormatted, false, getCallerPluginName(), null);
-        return new EconomyResponse(amount, bal, EconomyResponse.ResponseType.SUCCESS, "");
+        BalanceMutationResult result = DataCon.changePlayerData(
+                "PLUGIN", pd.getUniqueId(), amountFormatted, false, getCallerPluginName(), null);
+        return toEconomyResponse(result, amount);
     }
 
     @Override
@@ -341,6 +354,9 @@ public class Vault implements Economy {
         if (AdapterManager.BanModiftyBalance()) {
             return new EconomyResponse(0.0D, 0.0D, EconomyResponse.ResponseType.FAILURE,
                     "[BungeeCord] No player in server");
+        }
+        if (isInvalidAmount(amount)) {
+            return invalidAmountResponse();
         }
 
         if (DataCon.getPlayerData(pp.getUniqueId()) == null) {
@@ -356,8 +372,9 @@ public class Vault implements Economy {
             return new EconomyResponse(0.0D, bal, EconomyResponse.ResponseType.FAILURE, "Insufficient balance!");
         }
 
-        DataCon.changeplayerdata("PLUGIN", pp.getUniqueId(), amountFormatted, false, getCallerPluginName(), null);
-        return new EconomyResponse(amount, bal, EconomyResponse.ResponseType.SUCCESS, "");
+        BalanceMutationResult result = DataCon.changePlayerData(
+                "PLUGIN", pp.getUniqueId(), amountFormatted, false, getCallerPluginName(), null);
+        return toEconomyResponse(result, amount);
     }
 
     @Override
@@ -368,6 +385,25 @@ public class Vault implements Economy {
     @Override
     public EconomyResponse withdrawPlayer(OfflinePlayer pp, String arg1, double amount) {
         return withdrawPlayer(pp, amount);
+    }
+
+    private static boolean isInvalidAmount(double amount) {
+        return !Double.isFinite(amount) || amount < 0;
+    }
+
+    private static EconomyResponse invalidAmountResponse() {
+        return new EconomyResponse(0.0D, 0.0D, EconomyResponse.ResponseType.FAILURE,
+                "Amount must be a finite, non-negative number.");
+    }
+
+    private static EconomyResponse toEconomyResponse(BalanceMutationResult result, double amount) {
+        double balance = result.getBalance() == null ? 0.0D : result.getBalance().doubleValue();
+        if (result.isSuccess()) {
+            return new EconomyResponse(amount, balance, EconomyResponse.ResponseType.SUCCESS, "");
+        }
+        String error = result.getStatus() == BalanceMutationResult.Status.INSUFFICIENT_FUNDS
+                ? "Insufficient balance!" : "Balance update failed: " + result.getStatus();
+        return new EconomyResponse(0.0D, balance, EconomyResponse.ResponseType.FAILURE, error);
     }
 
     /**

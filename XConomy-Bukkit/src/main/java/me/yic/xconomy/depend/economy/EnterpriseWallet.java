@@ -21,6 +21,7 @@ import com.github.sanctum.economy.construct.EconomyAction;
 import com.github.sanctum.economy.construct.account.PlayerWallet;
 import me.yic.xconomy.AdapterManager;
 import me.yic.xconomy.XConomyLoad;
+import me.yic.xconomy.data.BalanceMutationResult;
 import me.yic.xconomy.data.DataCon;
 import me.yic.xconomy.data.DataFormat;
 import org.bukkit.OfflinePlayer;
@@ -41,13 +42,18 @@ public class EnterpriseWallet extends PlayerWallet {
             return new EconomyAction(getHolder(), false,
                     "[BungeeCord] No player in server");
         }
+        if (isInvalidAmount(amount)) {
+            return new EconomyAction(getHolder(), false, "Amount must be non-negative.");
+        }
 
         if (DataFormat.isMAX(amount)) {
             return new EconomyAction(getHolder(), false,  "Max balance!");
         }
 
-        DataCon.changeplayerdata("PLUGIN", getPlayer().getUniqueId(), amount, null, null ,null);
-        return new EconomyAction(getHolder(), true,  "");
+        BalanceMutationResult result = DataCon.changePlayerData(
+                "PLUGIN", getPlayer().getUniqueId(), amount, null, null, null);
+        return new EconomyAction(getHolder(), result.isSuccess(),
+                result.isSuccess() ? "" : "Balance update failed: " + result.getStatus());
     }
 
     @Override
@@ -82,10 +88,10 @@ public class EnterpriseWallet extends PlayerWallet {
     @Override
     public boolean has(BigDecimal bigDecimal) {
         BigDecimal bal = getBalance();
-        if (bal == null){
+        if (bal == null || isInvalidAmount(bigDecimal)){
             return false;
         }
-        return getBalance().compareTo(getBalance()) > 0;
+        return bal.compareTo(bigDecimal) >= 0;
     }
 
     @Override
@@ -99,6 +105,9 @@ public class EnterpriseWallet extends PlayerWallet {
         if (XConomyLoad.getSyncData_Enable() & AdapterManager.BanModiftyBalance()) {
             return new EconomyAction(getHolder(), false, "[BungeeCord] No player in server");
         }
+        if (isInvalidAmount(amount)) {
+            return new EconomyAction(getHolder(), false, "Amount must be non-negative.");
+        }
 
         BigDecimal bal = getBalance();
 
@@ -107,8 +116,10 @@ public class EnterpriseWallet extends PlayerWallet {
         }
 
         UUID playeruuid = getPlayer().getUniqueId();
-        DataCon.changeplayerdata("PLUGIN", playeruuid, amount, false, null, null);
-        return new EconomyAction(getHolder(), true, "");
+        BalanceMutationResult result = DataCon.changePlayerData(
+                "PLUGIN", playeruuid, amount, false, null, null);
+        return new EconomyAction(getHolder(), result.isSuccess(),
+                result.isSuccess() ? "" : "Balance update failed: " + result.getStatus());
     }
 
     @Override
@@ -123,6 +134,9 @@ public class EnterpriseWallet extends PlayerWallet {
             return new EconomyAction(getHolder(), false,
                     "[BungeeCord] No player in server");
         }
+        if (isInvalidAmount(amount)) {
+            return new EconomyAction(getHolder(), false, "Amount must be non-negative.");
+        }
 
         BigDecimal bal = getBalance();
 
@@ -131,12 +145,18 @@ public class EnterpriseWallet extends PlayerWallet {
         }
 
         UUID playerUUID = getPlayer().getUniqueId();
-        DataCon.changeplayerdata("PLUGIN", playerUUID, amount, true, null, null);
-        return new EconomyAction(getHolder(), true,  "");
+        BalanceMutationResult result = DataCon.changePlayerData(
+                "PLUGIN", playerUUID, amount, true, null, null);
+        return new EconomyAction(getHolder(), result.isSuccess(),
+                result.isSuccess() ? "" : "Balance update failed: " + result.getStatus());
     }
 
     @Override
     public EconomyAction deposit(BigDecimal amount, String s) {
         return deposit(amount);
+    }
+
+    private static boolean isInvalidAmount(BigDecimal amount) {
+        return amount == null || amount.signum() < 0;
     }
 }

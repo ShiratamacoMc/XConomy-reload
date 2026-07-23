@@ -90,6 +90,9 @@ public class TabList implements TabCompleter {
                         DB_TYPES.add("SQLite");
                         DB_TYPES.add("MySQL");
                         StringUtil.copyPartialMatches(args[1], DB_TYPES, completions);
+                    } else if (args[0].equalsIgnoreCase("deldata") && commandSender.isOp()) {
+                        // /xconomy deldata <玩家>
+                        StringUtil.copyPartialMatches(args[1], getPlayerListForTab(), completions);
                     }
                 } else if (args.length >= 2 && args[0].equalsIgnoreCase("track")
                         && XConomyLoad.Config.TRACKING_ENABLE) {
@@ -216,7 +219,7 @@ public class TabList implements TabCompleter {
                 if (args.length == 1) {
                     // /money <?>
                     List<String> candidates = new ArrayList<>();
-                    if (canViewOther) candidates.addAll(getPlayerListForTab());
+                    if (canViewOther) candidates.add("look");
                     if (canGive) candidates.add("give");
                     if (canTake) candidates.add("take");
                     if (canSet)  candidates.add("set");
@@ -225,7 +228,9 @@ public class TabList implements TabCompleter {
                 } else if (args.length == 2) {
                     // /money <sub> <?>
                     String sub = args[0].toLowerCase();
-                    if (sub.equals("give") || sub.equals("take") || sub.equals("set")) {
+                    if (sub.equals("look") && canViewOther) {
+                        StringUtil.copyPartialMatches(args[1], getPlayerListForTab(), completions);
+                    } else if (sub.equals("give") || sub.equals("take") || sub.equals("set")) {
                         if (canAdmin) {
                             // 玩家名 + 通配符 *
                             List<String> players = new ArrayList<>(getPlayerListForTab());

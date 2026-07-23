@@ -19,6 +19,9 @@ Settings:
   language: English
   #Whether to check for new version
   check-update: true
+  #Whether to enable anonymous bStats metrics
+  #This setting can be applied with /xconomy reload
+  bstats: true
   #TOP10 and the Server Total refresh time interval (Seconds)
   refresh-time: 300
   #If set to true, XConomy will register the following commands:

@@ -44,6 +44,11 @@ public class UpdateConfig {
             config.set("Thread.future-timeout", 3);
             update = true;
         }
+        if (!config.contains("Settings.bstats")) {
+            config.createSection("Settings.bstats");
+            config.set("Settings.bstats", true);
+            update = true;
+        }
         if (update){
             try {
                 config.save();

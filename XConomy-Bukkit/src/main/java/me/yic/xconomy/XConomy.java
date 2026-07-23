@@ -46,13 +46,14 @@ import java.lang.reflect.Field;
 import java.util.Collections;
 
 public class XConomy extends JavaPlugin {
+    private static final int BSTATS_PLUGIN_ID = 32838;
 
     public final static String version = "Bukkit";
     public static String PVersion;
     private static XConomy instance;
 
     public static String syncversion = SyncInfo.syncversion;
-    Metrics metrics = null;
+    private Metrics metrics = null;
     private Placeholder papiExpansion = null;
 
     private ImportData itd = null;
@@ -124,8 +125,7 @@ public class XConomy extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ConnectionListeners(), this);
 
 
-        metrics = new Metrics(this, 6588);
-        metrics.addCustomChart(new SimplePie("uuid-mode", () -> XConomyLoad.Config.UUIDMODE.toString().substring(11)));
+        updateMetrics();
 
         try {
             final Field bukkitCommandMap = Bukkit.getServer().getClass().getDeclaredField("commandMap");
@@ -170,6 +170,7 @@ public class XConomy extends JavaPlugin {
         }
 
         RunBaltop.stop();
+        disableMetrics();
         XConomyLoad.Unload();
         logger("XConomy已成功卸载", 0, null);
     }
@@ -237,9 +238,29 @@ public class XConomy extends JavaPlugin {
         
         // 重新加载 XConomy 配置
         XConomyLoad.LoadConfig();
+        updateMetrics();
         
         // 记录重载成功
         logger(null, 0, "Configuration reloaded successfully");
+    }
+
+    private void updateMetrics() {
+        if (XConomyLoad.Config.BSTATS) {
+            if (metrics == null) {
+                metrics = new Metrics(this, BSTATS_PLUGIN_ID);
+                metrics.addCustomChart(new SimplePie("uuid-mode",
+                        () -> XConomyLoad.Config.UUIDMODE.toString().substring(11)));
+            }
+        } else {
+            disableMetrics();
+        }
+    }
+
+    private void disableMetrics() {
+        if (metrics != null) {
+            metrics.shutdown();
+            metrics = null;
+        }
     }
 
 

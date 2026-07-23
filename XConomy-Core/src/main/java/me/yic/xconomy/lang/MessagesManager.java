@@ -67,9 +67,9 @@ public class MessagesManager {
     public static String getAuthor() {
         if (XConomyLoad.Config.LANGUAGE.equalsIgnoreCase("Chinese")
                 | XConomyLoad.Config.LANGUAGE.equalsIgnoreCase("ChineseTW")) {
-            return "伊C";
+            return "伊C, MagicBili";
         } else {
-            return "YiC";
+            return "YiC, MagicBili";
         }
     }
 

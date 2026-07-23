@@ -38,8 +38,17 @@ import me.yic.xconomy.utils.SendPluginMessage;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public class DataCon {
+    private static final Object[] ACCOUNT_LOCKS = new Object[256];
+
+    static {
+        for (int i = 0; i < ACCOUNT_LOCKS.length; i++) {
+            ACCOUNT_LOCKS[i] = new Object();
+        }
+    }
 
     public static PlayerData getPlayerData(UUID uuid) {
         return getPlayerDatai(uuid);
@@ -126,125 +135,195 @@ public class DataCon {
     }
 
     public static BigDecimal changeplayerdata(final String type, final UUID uid, final BigDecimal amount, final Boolean isAdd, final String command, final Object comment) {
-        PlayerData pd = getPlayerData(uid);
-        UUID u = pd.getUniqueId();
-        BigDecimal newvalue = amount;
-        BigDecimal bal = pd.getBalance();
+        BalanceMutationResult result = changePlayerData(type, uid, amount, isAdd, command, comment);
+        return result.getBalance();
+    }
 
-        RecordInfo ri = new RecordInfo(type, command, comment);
-
-        // Parse tracking information — determine transaction_type for every code path
-        if (comment instanceof String) {
-            String commentStr = (String) comment;
-            if (commentStr.startsWith("PAY_SEND:")) {
-                // Explicit player-to-player pay (expense leg)
-                try {
-                    UUID toUid = UUID.fromString(commentStr.substring(9));
-                    ri.withTracking(u, toUid, "PAY_SEND");
-                } catch (IllegalArgumentException ignored) {}
-            } else if (commentStr.startsWith("PAY_RECEIVE:")) {
-                // Explicit player-to-player pay (income leg)
-                try {
-                    UUID fromUid = UUID.fromString(commentStr.substring(12));
-                    ri.withTracking(fromUid, u, "PAY_RECEIVE");
-                } catch (IllegalArgumentException ignored) {}
+    public static BalanceMutationResult changePlayerData(final String type, final UUID uid,
+                                                         final BigDecimal amount, final Boolean isAdd,
+                                                         final String command, final Object comment) {
+        synchronized (getAccountLock(uid)) {
+            PlayerData pd = getPlayerData(uid);
+            if (pd == null) {
+                return BalanceMutationResult.failure(BalanceMutationResult.Status.NOT_FOUND, BigDecimal.ZERO);
             }
-        }
 
-        // For non-pay types, set transaction_type if it hasn't been set yet
-        if (ri.getTransactionType() == null) {
-            if (type.equals("ADMIN_COMMAND")) {
-                if (isAdd != null && isAdd) {
-                    ri.withTracking(null, u, "ADMIN_GIVE");
-                } else if (isAdd != null && !isAdd) {
-                    ri.withTracking(u, null, "ADMIN_TAKE");
-                } else {
-                    ri.withTracking(null, u, "ADMIN_SET");
+            UUID accountUid = pd.getUniqueId();
+            BigDecimal oldBalance = pd.getBalance();
+            RecordInfo recordInfo = createRecordInfo(type, accountUid, isAdd, command, comment);
+            CallAPI.CallPlayerAccountEvent(accountUid, pd.getName(), oldBalance, amount, isAdd, recordInfo);
+
+            BalanceMutationResult result = executeMutation(
+                    () -> DataLink.save(pd, isAdd, amount, recordInfo),
+                    BalanceMutationResult.failure(BalanceMutationResult.Status.DATABASE_ERROR, oldBalance));
+
+            if (!result.isSuccess()) {
+                if (result.getStatus() != BalanceMutationResult.Status.DATABASE_ERROR
+                        && result.getBalance() != null) {
+                    Cache.updateIntoCache(accountUid, pd, result.getBalance(), oldBalance);
                 }
-            } else if (type.equals("PLUGIN_API")) {
-                // command holds the caller plugin name passed via XConomyAPI
-                if (isAdd != null && isAdd) {
-                    ri.withTracking(null, u, "PLUGIN_API_GIVE");
-                } else if (isAdd != null && !isAdd) {
-                    ri.withTracking(u, null, "PLUGIN_API_TAKE");
-                } else {
-                    ri.withTracking(null, u, "PLUGIN_API_SET");
-                }
-            } else if (type.equals("PLUGIN")) {
-                // Called via Vault / Enterprise / Sponge Economy.
-                // command holds the caller plugin name detected by the hook.
-                if (isAdd != null && isAdd) {
-                    ri.withTracking(null, u, "PLUGIN_GIVE");
-                } else if (isAdd != null && !isAdd) {
-                    ri.withTracking(u, null, "PLUGIN_TAKE");
-                } else {
-                    ri.withTracking(null, u, "PLUGIN_SET");
-                }
+                return result;
             }
-        }
 
-        // Add money flow tracing if enabled
-        if (XConomyLoad.isTransactionTrackingEnabled()) {
-            if (isAdd != null) {
-                if (isAdd && ri.getToUid() != null) {
-                    // This is an income transaction - generate new trace ID
-                    String traceId = TraceManager.generateTraceId();
-                    ri.withTraceInfo(traceId, ri.getFromUid() != null ? TraceManager.getLastIncome(ri.getFromUid()) : null);
-                } else if (!isAdd && ri.getFromUid() != null) {
-                    // This is an expense transaction - link to last income
-                    Long parentId = TraceManager.getLastIncome(u);
-                    if (parentId != null) {
-                        ri.withTraceInfo(TraceManager.generateTraceId(), parentId);
-                    } else {
-                        ri.withTraceInfo(TraceManager.generateTraceId(), null);
-                    }
-                }
-            }
-        }
-
-        CallAPI.CallPlayerAccountEvent(u, pd.getName(), bal, amount, isAdd, ri);
-
-        if (isAdd != null) {
-            if (isAdd) {
-                newvalue = bal.add(amount);
-            } else {
-                newvalue = bal.subtract(amount);
-            }
-        }
-
-        Cache.updateIntoCache(u, pd, newvalue, bal);
-
-        final UUID finalUid = u;
-        final Boolean finalIsAdd = isAdd;
-        if (XConomyLoad.DConfig.canasync && AdapterManager.checkisMainThread()) {
-            AdapterManager.runTaskAsynchronously(() -> {
-                Long transactionId = DataLink.save(pd, finalIsAdd, amount, ri);
-                // Record transaction ID for money flow tracing
-                if (XConomyLoad.isTransactionTrackingEnabled() && transactionId != null) {
-                    if (finalIsAdd != null && finalIsAdd && ri.getToUid() != null) {
-                        TraceManager.recordLastIncome(ri.getToUid(), transactionId);
-                    }
-                }
-                if (XConomyLoad.getSyncData_Enable()) {
-                    SendMessTask(pd);
-                }
-            });
-        } else {
-            Long transactionId = DataLink.save(pd, isAdd, amount, ri);
-            // Record transaction ID for money flow tracing
-            if (XConomyLoad.isTransactionTrackingEnabled() && transactionId != null) {
-                if (isAdd != null && isAdd && ri.getToUid() != null) {
-                    TraceManager.recordLastIncome(ri.getToUid(), transactionId);
-                }
-            }
+            Cache.updateIntoCache(accountUid, pd, result.getBalance(), oldBalance);
+            recordLastIncome(isAdd, recordInfo, result.getTransactionId());
             if (XConomyLoad.getSyncData_Enable()) {
                 SendMessTask(pd);
             }
+            return result;
         }
-
-        return newvalue;
     }
 
+    public static BalanceTransferResult transferPlayerData(UUID senderUid, UUID targetUid,
+                                                           BigDecimal senderAmount, BigDecimal targetAmount,
+                                                           String command) {
+        int senderLockIndex = getAccountLockIndex(senderUid);
+        int targetLockIndex = getAccountLockIndex(targetUid);
+        Object firstLock = ACCOUNT_LOCKS[Math.min(senderLockIndex, targetLockIndex)];
+        Object secondLock = ACCOUNT_LOCKS[Math.max(senderLockIndex, targetLockIndex)];
+
+        synchronized (firstLock) {
+            if (firstLock == secondLock) {
+                return transferPlayerDataLocked(senderUid, targetUid, senderAmount, targetAmount, command);
+            }
+            synchronized (secondLock) {
+                return transferPlayerDataLocked(senderUid, targetUid, senderAmount, targetAmount, command);
+            }
+        }
+    }
+
+    private static BalanceTransferResult transferPlayerDataLocked(UUID senderUid, UUID targetUid,
+                                                                  BigDecimal senderAmount,
+                                                                  BigDecimal targetAmount,
+                                                                  String command) {
+        PlayerData sender = getPlayerData(senderUid);
+        PlayerData target = getPlayerData(targetUid);
+        if (sender == null || target == null) {
+            return BalanceTransferResult.failure(BalanceMutationResult.Status.NOT_FOUND,
+                    sender == null ? BigDecimal.ZERO : sender.getBalance(),
+                    target == null ? BigDecimal.ZERO : target.getBalance());
+        }
+
+        BigDecimal oldSenderBalance = sender.getBalance();
+        BigDecimal oldTargetBalance = target.getBalance();
+        RecordInfo senderRecord = createRecordInfo("PLAYER_COMMAND", senderUid, false, command,
+                "PAY_SEND:" + targetUid);
+        RecordInfo targetRecord = createRecordInfo("PLAYER_COMMAND", targetUid, true, command,
+                "PAY_RECEIVE:" + senderUid);
+
+        CallAPI.CallPlayerAccountEvent(senderUid, sender.getName(), oldSenderBalance,
+                senderAmount, false, senderRecord);
+        CallAPI.CallPlayerAccountEvent(targetUid, target.getName(), oldTargetBalance,
+                targetAmount, true, targetRecord);
+
+        BalanceTransferResult result = executeTransfer(() -> DataLink.transfer(sender, target,
+                senderAmount, targetAmount, senderRecord, targetRecord),
+                BalanceTransferResult.failure(BalanceMutationResult.Status.DATABASE_ERROR,
+                        oldSenderBalance, oldTargetBalance));
+
+        if (!result.isSuccess()) {
+            if (result.getStatus() != BalanceMutationResult.Status.DATABASE_ERROR) {
+                Cache.updateIntoCache(senderUid, sender, result.getSenderBalance(), oldSenderBalance);
+                Cache.updateIntoCache(targetUid, target, result.getTargetBalance(), oldTargetBalance);
+            }
+            return result;
+        }
+
+        Cache.updateIntoCache(senderUid, sender, result.getSenderBalance(), oldSenderBalance);
+        Cache.updateIntoCache(targetUid, target, result.getTargetBalance(), oldTargetBalance);
+        recordLastIncome(true, targetRecord, result.getTargetTransactionId());
+        if (XConomyLoad.getSyncData_Enable()) {
+            SendMessTask(sender);
+            SendMessTask(target);
+        }
+        return result;
+    }
+
+    private static RecordInfo createRecordInfo(String type, UUID uid, Boolean isAdd,
+                                               String command, Object comment) {
+        RecordInfo recordInfo = new RecordInfo(type, command, comment);
+        if (comment instanceof String) {
+            String commentValue = (String) comment;
+            try {
+                if (commentValue.startsWith("PAY_SEND:")) {
+                    recordInfo.withTracking(uid, UUID.fromString(commentValue.substring(9)), "PAY_SEND");
+                } else if (commentValue.startsWith("PAY_RECEIVE:")) {
+                    recordInfo.withTracking(UUID.fromString(commentValue.substring(12)), uid, "PAY_RECEIVE");
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+
+        if (recordInfo.getTransactionType() == null) {
+            if ("ADMIN_COMMAND".equals(type)) {
+                recordInfo.withTracking(Boolean.FALSE.equals(isAdd) ? uid : null,
+                        Boolean.FALSE.equals(isAdd) ? null : uid,
+                        isAdd == null ? "ADMIN_SET" : isAdd ? "ADMIN_GIVE" : "ADMIN_TAKE");
+            } else if ("PLUGIN_API".equals(type)) {
+                recordInfo.withTracking(Boolean.FALSE.equals(isAdd) ? uid : null,
+                        Boolean.FALSE.equals(isAdd) ? null : uid,
+                        isAdd == null ? "PLUGIN_API_SET" : isAdd ? "PLUGIN_API_GIVE" : "PLUGIN_API_TAKE");
+            } else if ("PLUGIN".equals(type)) {
+                recordInfo.withTracking(Boolean.FALSE.equals(isAdd) ? uid : null,
+                        Boolean.FALSE.equals(isAdd) ? null : uid,
+                        isAdd == null ? "PLUGIN_SET" : isAdd ? "PLUGIN_GIVE" : "PLUGIN_TAKE");
+            }
+        }
+
+        if (XConomyLoad.isTransactionTrackingEnabled() && isAdd != null) {
+            Long parentId = null;
+            if (isAdd && recordInfo.getFromUid() != null) {
+                parentId = TraceManager.getLastIncome(recordInfo.getFromUid());
+            } else if (!isAdd && recordInfo.getFromUid() != null) {
+                parentId = TraceManager.getLastIncome(uid);
+            }
+            recordInfo.withTraceInfo(TraceManager.generateTraceId(), parentId);
+        }
+        return recordInfo;
+    }
+
+    private static void recordLastIncome(Boolean isAdd, RecordInfo recordInfo, Long transactionId) {
+        if (XConomyLoad.isTransactionTrackingEnabled() && transactionId != null
+                && Boolean.TRUE.equals(isAdd) && recordInfo.getToUid() != null) {
+            TraceManager.recordLastIncome(recordInfo.getToUid(), transactionId);
+        }
+    }
+
+    private static BalanceMutationResult executeMutation(
+            java.util.function.Supplier<BalanceMutationResult> operation,
+            BalanceMutationResult failure) {
+        try {
+            if (XConomyLoad.DConfig.canasync && AdapterManager.checkisMainThread()) {
+                return CompletableFuture.supplyAsync(operation).join();
+            }
+            return operation.get();
+        } catch (CompletionException exception) {
+            exception.printStackTrace();
+            return failure;
+        }
+    }
+
+    private static BalanceTransferResult executeTransfer(
+            java.util.function.Supplier<BalanceTransferResult> operation,
+            BalanceTransferResult failure) {
+        try {
+            if (XConomyLoad.DConfig.canasync && AdapterManager.checkisMainThread()) {
+                return CompletableFuture.supplyAsync(operation).join();
+            }
+            return operation.get();
+        } catch (CompletionException exception) {
+            exception.printStackTrace();
+            return failure;
+        }
+    }
+
+    private static Object getAccountLock(UUID uid) {
+        return ACCOUNT_LOCKS[getAccountLockIndex(uid)];
+    }
+
+    private static int getAccountLockIndex(UUID uid) {
+        return (uid.hashCode() & Integer.MAX_VALUE) % ACCOUNT_LOCKS.length;
+    }
 
     @SuppressWarnings("ConstantConditions")
     public static void changeaccountdata(final String type, final String u, final BigDecimal amount, final Boolean isAdd, final String command) {

@@ -22,6 +22,8 @@ import me.yic.xconomy.AdapterManager;
 import me.yic.xconomy.XConomyLoad;
 import me.yic.xconomy.adapter.comp.CPlayer;
 import me.yic.xconomy.adapter.comp.CSender;
+import me.yic.xconomy.data.BalanceMutationResult;
+import me.yic.xconomy.data.BalanceTransferResult;
 import me.yic.xconomy.data.DataCon;
 import me.yic.xconomy.data.DataFormat;
 import me.yic.xconomy.data.syncdata.PlayerData;
@@ -131,14 +133,22 @@ public class CommandPay extends CommandCore{
         String com = commandName + " " + args[0] + " " + amount;
         UUID senderUid = sender.toPlayer().getUniqueId();
         
-        // Sender pays (expense)
-        DataCon.changeplayerdata("PLAYER_COMMAND", senderUid, taxamount, false, com, "PAY_SEND:" + targetUUID.toString());
+        BalanceTransferResult transferResult = DataCon.transferPlayerData(
+                senderUid, targetUUID, taxamount, amount, com);
+        if (!transferResult.isSuccess()) {
+            if (transferResult.getStatus() == BalanceMutationResult.Status.MAX_BALANCE) {
+                sendMessages(sender, PREFIX + translateColorCodes("over_maxnumber"));
+            } else {
+                sendMessages(sender, PREFIX + translateColorCodes("pay_fail")
+                        .replace("%amount%", taxamountFormatted));
+            }
+            return true;
+        }
+
         sendMessages(sender, PREFIX + translateColorCodes("pay")
                 .replace("%player%", realname)
                 .replace("%amount%", amountFormatted));
 
-        // Target receives (income)
-        DataCon.changeplayerdata("PLAYER_COMMAND", targetUUID, amount, true, com, "PAY_RECEIVE:" + senderUid.toString());
         String mess = PREFIX + translateColorCodes("pay_receive")
                 .replace("%player%", sender.getName())
                 .replace("%amount%", amountFormatted);
