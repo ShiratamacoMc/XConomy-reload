@@ -29,7 +29,7 @@ public class CPlayer implements iPlayer {
 
     @Override
     public void kickPlayer(String reason) {
-        runOnPlayer(() -> player.kickPlayer(reason));
+        runOnPlayer(() -> player.kick(MINI_MESSAGE.deserialize(reason)));
     }
 
     @Override

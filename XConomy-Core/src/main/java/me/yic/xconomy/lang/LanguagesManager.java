@@ -94,6 +94,7 @@ public class LanguagesManager {
         ll.add("usage_track_cleanup");
         ll.add("usage_track_self");
         ll.add("usage_track_other");
+        ll.add("usage_track_flow");
         ll.add("over_maxnumber");
         ll.add("over_maxnumber_receive");
         ll.add("money_give");
@@ -107,6 +108,8 @@ public class LanguagesManager {
         ll.add("no_permission");
         ll.add("no_data");
         ll.add("no_online_players");
+        ll.add("all_players");
+        ll.add("online_players");
         ll.add("delete_data");
         ll.add("delete_data_admin");
         ll.add("global_permissions_change");
@@ -141,6 +144,17 @@ public class LanguagesManager {
         ll.add("track_expense_text");
         ll.add("track_no_records");
         ll.add("track_statistics");
+        ll.add("track_footer");
+        ll.add("track_detail_not_found");
+        ll.add("track_detail_title");
+        ll.add("track_detail_amount");
+        ll.add("track_detail_parties");
+        ll.add("track_detail_context");
+        ll.add("track_detail_metadata");
+        ll.add("track_detail_comment");
+        ll.add("track_detail_command");
+        ll.add("track_detail_flow");
+        ll.add("track_not_available");
         ll.add("track_cleanup_success");
         ll.add("track_cleanup_confirm");
         ll.add("track_type_pay_send");
@@ -156,6 +170,8 @@ public class LanguagesManager {
         ll.add("track_type_unknown");
         ll.add("console_name");
         ll.add("track_view_other_no_permission");
+        ll.add("tab_amount");
+        ll.add("tab_transaction_id");
         return ll;
 
     }

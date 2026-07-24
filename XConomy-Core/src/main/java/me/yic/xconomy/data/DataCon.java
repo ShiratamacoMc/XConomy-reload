@@ -111,7 +111,8 @@ public class DataCon {
 
         CPlayer cp = AdapterManager.PLUGIN.getplayer(pd);
         if(cp.isOnline()){
-            cp.kickPlayer("[XConomy] " + AdapterManager.translateColorCodes(MessageConfig.DELETE_DATA));
+            cp.kickPlayer(AdapterManager.translateColorCodes("prefix") + " "
+                    + AdapterManager.translateColorCodes(MessageConfig.DELETE_DATA));
         }
     }
 

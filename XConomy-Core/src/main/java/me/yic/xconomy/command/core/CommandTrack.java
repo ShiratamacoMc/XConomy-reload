@@ -24,6 +24,7 @@ import me.yic.xconomy.adapter.comp.CSender;
 import me.yic.xconomy.data.DataCon;
 import me.yic.xconomy.data.DataFormat;
 import me.yic.xconomy.data.syncdata.PlayerData;
+import me.yic.xconomy.data.tracking.MoneyFlowTracer;
 import me.yic.xconomy.data.tracking.TrackPageCache;
 import me.yic.xconomy.data.tracking.TransactionCleanup;
 import me.yic.xconomy.data.tracking.TransactionQuery;
@@ -59,6 +60,22 @@ public class CommandTrack extends CommandCore {
         }
 
         String subCommand = args[1].toLowerCase();
+
+        if (subCommand.equals("flow")) {
+            if (args.length != 3) {
+                sendUsage(sender, "usage_track_flow");
+                return true;
+            }
+
+            Long transactionId = parsePositiveLong(args[2]);
+            if (transactionId == null) {
+                sendUsage(sender, "usage_track_flow");
+                return true;
+            }
+
+            AdapterManager.runTaskAsynchronously(() -> displayTransactionDetail(sender, transactionId));
+            return true;
+        }
 
         // Check for cleanup command
         if (subCommand.equals("cleanup")) {
@@ -184,25 +201,25 @@ public class CommandTrack extends CommandCore {
 
     private static void displayTransactionRecords(CSender sender, UUID targetUUID, String playerName, String trackType, int page) {
         int pageSize = XConomyLoad.Config.TRACKING_RECORDS_PER_PAGE;
-        List<TransactionRecord> records;
-        int totalRecords;
-
-        if (trackType.equals("income")) {
-            records = TransactionQuery.getIncomeTransactions(targetUUID, page, pageSize);
-            totalRecords = TransactionQuery.countIncomeRecords(targetUUID);
-        } else {
-            records = TransactionQuery.getExpenseTransactions(targetUUID, page, pageSize);
-            totalRecords = TransactionQuery.countExpenseRecords(targetUUID);
-        }
+        int totalRecords = trackType.equals("income")
+                ? TransactionQuery.countIncomeRecords(targetUUID)
+                : TransactionQuery.countExpenseRecords(targetUUID);
 
         int maxPage = (int) Math.ceil((double) totalRecords / pageSize);
         if (maxPage == 0) maxPage = 1;
+        page = Math.min(page, maxPage);
+
+        List<TransactionRecord> records = trackType.equals("income")
+                ? TransactionQuery.getIncomeTransactions(targetUUID, page, pageSize)
+                : TransactionQuery.getExpenseTransactions(targetUUID, page, pageSize);
 
         // Send title
         String title = trackType.equals("income") ? 
                 translateColorCodes("track_income_title") : 
                 translateColorCodes("track_expense_title");
-        sendMessages(sender, title.replace("%page%", page + "/" + maxPage));
+        sendMessages(sender, title
+                .replace("%player%", playerName)
+                .replace("%page%", page + "/" + maxPage));
 
         // Send statistics
         TransactionStatistics stats = TransactionQuery.getStatistics(targetUUID);
@@ -220,6 +237,14 @@ public class CommandTrack extends CommandCore {
                 sendMessages(sender, message);
             }
         }
+
+        int previousPage = Math.max(1, page - 1);
+        int nextPage = Math.min(maxPage, page + 1);
+        String navigationCommand = createTrackNavigationCommand(sender, playerName, trackType);
+        sendMessages(sender, translateColorCodes("track_footer")
+                .replace("%command%", navigationCommand)
+                .replace("%previous_page%", String.valueOf(previousPage))
+                .replace("%next_page%", String.valueOf(nextPage)));
     }
 
     private static String formatTransactionRecord(TransactionRecord record, String trackType) {
@@ -276,11 +301,108 @@ public class CommandTrack extends CommandCore {
         }
 
         return template
+                .replace("%id%", String.valueOf(record.getId()))
                 .replace("%time%", time)
                 .replace("%amount%", amount)
                 .replace("%from%", otherParty)
                 .replace("%to%", otherParty)
                 .replace("%type%", type);
+    }
+
+    private static void displayTransactionDetail(CSender sender, long transactionId) {
+        MoneyFlowTracer.MoneyFlowChain chain = MoneyFlowTracer.traceMoneyFlow(transactionId);
+        if (chain == null || chain.getCurrentTransaction() == null) {
+            sendMessages(sender, PREFIX + translateColorCodes("track_detail_not_found"));
+            return;
+        }
+
+        TransactionRecord record = chain.getCurrentTransaction();
+        if (!canViewTransaction(sender, record)) {
+            sendMessages(sender, PREFIX + translateColorCodes("track_view_other_no_permission"));
+            return;
+        }
+
+        String player = displayPlayer(record.getUid(), record.getPlayer());
+        String from = displayPlayer(record.getFromUid(), null);
+        String to = displayPlayer(record.getToUid(), null);
+        String holder = displayPlayer(chain.getCurrentHolder(), null);
+        String type = getTransactionTypeDisplay(record.getTransactionType(), record.getCommand());
+        String time = dateFormat.get().format(record.getDatetime());
+
+        sendMessages(sender, translateColorCodes("track_detail_title")
+                .replace("%id%", String.valueOf(record.getId())));
+        sendMessages(sender, translateColorCodes("track_detail_amount")
+                .replace("%amount%", DataFormat.shown(record.getAmount()))
+                .replace("%balance%", DataFormat.shown(record.getBalance())));
+        sendMessages(sender, translateColorCodes("track_detail_parties")
+                .replace("%player%", player)
+                .replace("%from%", from)
+                .replace("%to%", to));
+        sendMessages(sender, translateColorCodes("track_detail_context")
+                .replace("%type%", type)
+                .replace("%time%", time));
+        sendMessages(sender, translateColorCodes("track_detail_metadata")
+                .replace("%server%", textOrDefault(record.getServerId()))
+                .replace("%trace_id%", textOrDefault(record.getTraceId()))
+                .replace("%parent_id%", record.getParentTransactionId() == null
+                        ? translateColorCodes("track_not_available")
+                        : String.valueOf(record.getParentTransactionId())));
+
+        if (hasText(record.getComment())) {
+            sendMessages(sender, translateColorCodes("track_detail_comment")
+                    .replace("%comment%", record.getComment()));
+        }
+        if (hasText(record.getCommand())) {
+            sendMessages(sender, translateColorCodes("track_detail_command")
+                    .replace("%command%", record.getCommand()));
+        }
+        sendMessages(sender, translateColorCodes("track_detail_flow")
+                .replace("%hops%", String.valueOf(chain.getTotalHops()))
+                .replace("%holder%", holder));
+    }
+
+    private static boolean canViewTransaction(CSender sender, TransactionRecord record) {
+        if (sender.isOp() || sender.hasPermission("xconomy.admin.track.other")) {
+            return true;
+        }
+        if (!sender.isPlayer()) {
+            return false;
+        }
+
+        UUID viewer = sender.toPlayer().getUniqueId();
+        return viewer.equals(record.getUid()) || viewer.equals(record.getFromUid()) || viewer.equals(record.getToUid());
+    }
+
+    private static String createTrackNavigationCommand(CSender sender, String playerName, String trackType) {
+        if (sender.isPlayer() && sender.getName().equalsIgnoreCase(playerName)) {
+            return "/xconomy track " + trackType;
+        }
+        return "/xconomy track " + playerName + " " + trackType;
+    }
+
+    private static String displayPlayer(UUID playerId, String fallback) {
+        if (playerId == null) {
+            return fallback == null ? translateColorCodes("track_type_system") : fallback;
+        }
+        PlayerData playerData = DataCon.getPlayerData(playerId);
+        return playerData == null ? playerId.toString() : playerData.getName();
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isEmpty() && !value.equalsIgnoreCase("null") && !value.equalsIgnoreCase("N/A");
+    }
+
+    private static String textOrDefault(String value) {
+        return hasText(value) ? value : translateColorCodes("track_not_available");
+    }
+
+    private static Long parsePositiveLong(String value) {
+        try {
+            long parsed = Long.parseLong(value);
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private static String getTransactionTypeDisplay(String transactionType, String command) {

@@ -27,7 +27,7 @@ public class CPlayer implements iPlayer {
 
     @Override
     public void kickPlayer(String reason){
-        Bukkit.getScheduler().runTask(XConomy.getInstance(), ()->player.kickPlayer(reason));
+        Bukkit.getScheduler().runTask(XConomy.getInstance(), () -> player.kickPlayer(CChat.toLegacy(reason)));
     }
 
     @Override

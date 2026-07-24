@@ -166,11 +166,11 @@ public class CommandCore {
             }
 
             case "balancetop": {
-                return CommandBalancetop.onCommand(sender, args);
+                return CommandBalancetop.onCommand(sender, commandName, args);
             }
 
             case "ebalancetop": {
-                return CommandBalancetop.onCommand(sender, args);
+                return CommandBalancetop.onCommand(sender, commandName, args);
             }
 
             case "pay": {
@@ -352,7 +352,7 @@ public class CommandCore {
                 .replace("%next_page%", String.valueOf(nextPage)));
     }
 
-    protected static void sendRankingMessage(CSender sender, Integer num) {
+    protected static void sendRankingMessage(CSender sender, String commandName, Integer num) {
         Integer maxipages;
         int listsize = Cache.baltop_papi.size();
         if (listsize % XConomyLoad.Config.LINES_PER_PAGE == 0) {
@@ -381,7 +381,12 @@ public class CommandCore {
                     .replace("%balance%", DataFormat.shown((Cache.baltop.get(topName)))));
         }
 
-        sendMessages(sender, translateColorCodes("top_subtitle"));
+        int previousPage = Math.max(1, num - 1);
+        int nextPage = Math.min(maxipages, num + 1);
+        sendMessages(sender, translateColorCodes("top_subtitle")
+                .replace("%command%", commandName)
+                .replace("%previous_page%", String.valueOf(previousPage))
+                .replace("%next_page%", String.valueOf(nextPage)));
 
     }
 

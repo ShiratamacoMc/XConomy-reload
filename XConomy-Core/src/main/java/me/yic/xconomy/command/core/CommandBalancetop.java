@@ -28,7 +28,7 @@ import me.yic.xconomy.info.MessageConfig;
 import java.util.UUID;
 
 public class CommandBalancetop extends CommandCore{
-    public static boolean onCommand(CSender sender, String[] args) {
+    public static boolean onCommand(CSender sender, String commandName, String[] args) {
         if (args.length == 0 || args.length == 1) {
             if (!(sender.isOp() || sender.hasPermission("xconomy.user.balancetop"))) {
                 sendMessages(sender, PREFIX + translateColorCodes("no_permission"));
@@ -41,11 +41,11 @@ public class CommandBalancetop extends CommandCore{
             }
 
             if (args.length == 0) {
-                sendRankingMessage(sender, 1);
+                sendRankingMessage(sender, commandName, 1);
             } else {
                 Integer page = parsePositiveInteger(args[0]);
                 if (page != null) {
-                    sendRankingMessage(sender, page);
+                    sendRankingMessage(sender, commandName, page);
                 } else {
                     sendUsage(sender, "usage_balancetop_page");
                 }

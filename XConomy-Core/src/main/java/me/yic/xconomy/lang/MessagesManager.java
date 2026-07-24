@@ -54,9 +54,30 @@ public class MessagesManager {
         }
 
         messageFile = new CConfig(mfile);
+        if (mfile.length() > 0 && !messageFile.contains("prefix") && !messageFile.contains("balance")) {
+            File backup = new File(mfile.getParentFile(),
+                    "message.yml.invalid-" + System.currentTimeMillis() + ".bak");
+            if (mfile.renameTo(backup) && createMessageFile(mfile)) {
+                plugin.logger(null, 1, "Invalid message.yml was backed up to " + backup.getName()
+                        + " and will be regenerated.");
+                messageFile = new CConfig(mfile);
+                translate = true;
+            } else {
+                plugin.logger(null, 1, "Invalid message.yml could not be backed up automatically.");
+            }
+        }
         LanguagesManager.compare(XConomyLoad.Config.LANGUAGE, mfile);
         if (translate) {
             LanguagesManager.translatorName(mfile);
+        }
+    }
+
+    private static boolean createMessageFile(File file) {
+        try {
+            return file.createNewFile();
+        } catch (IOException exception) {
+            exception.printStackTrace();
+            return false;
         }
     }
 

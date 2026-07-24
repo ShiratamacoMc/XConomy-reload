@@ -83,12 +83,12 @@ public class TabList implements TabCompleter {
                         COMMANDS_xc.add("deldata");
                         COMMANDS_xc.add("migrate");
                     }
-                    if (XConomyLoad.Config.TRACKING_ENABLE) {
+                    if (XConomyLoad.isTransactionTrackingEnabled()) {
                         COMMANDS_xc.add("track");
                     }
                     StringUtil.copyPartialMatches(args[0], COMMANDS_xc, completions);
 
-                } else if (args.length == 2) {
+                } else if (args.length == 2 && !args[0].equalsIgnoreCase("track")) {
                     if (args[0].equalsIgnoreCase("migrate") && commandSender.isOp()) {
                         // /xconomy migrate <SQLite|MySQL>
                         List<String> DB_TYPES = new ArrayList<>();
@@ -100,7 +100,7 @@ public class TabList implements TabCompleter {
                         StringUtil.copyPartialMatches(args[1], getPlayerListForTab(), completions);
                     }
                 } else if (args.length >= 2 && args[0].equalsIgnoreCase("track")
-                        && XConomyLoad.Config.TRACKING_ENABLE) {
+                        && XConomyLoad.isTransactionTrackingEnabled()) {
 
                     if (args.length == 2) {
                         // /xconomy track <?>
@@ -112,6 +112,10 @@ public class TabList implements TabCompleter {
                         }
                         if (commandSender.isOp() || commandSender.hasPermission("xconomy.admin.track.cleanup")) {
                             TRACK_SUB.add("cleanup");
+                        }
+                        if (commandSender instanceof Player || commandSender.isOp()
+                                || commandSender.hasPermission("xconomy.admin.track.other")) {
+                            TRACK_SUB.add("flow");
                         }
                         StringUtil.copyPartialMatches(args[1], TRACK_SUB, completions);
 
@@ -129,6 +133,11 @@ public class TabList implements TabCompleter {
                             // /xconomy track cleanup <天数>，提示常用值
                             StringUtil.copyPartialMatches(args[2],
                                     java.util.Arrays.asList("7", "30", "60", "90", "180", "365"), completions);
+                        } else if (sub.equals("flow")) {
+                            String hint = MessagesManager.messageFile.getString("tab_transaction_id");
+                            if (args[2].isEmpty()) {
+                                completions.add(hint != null ? hint : "<transaction_id>");
+                            }
                         } else {
                             // /xconomy track <玩家名> <income|expense>
                             if (commandSender.isOp() || commandSender.hasPermission("xconomy.admin.track.other")) {
@@ -166,6 +175,9 @@ public class TabList implements TabCompleter {
                         StringUtil.copyPartialMatches(args[0], COMMANDS_payperm, completions);
                     } else if (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("remove")) {
                         if (args.length == 2) {
+                            if (args[0].equalsIgnoreCase("set")) {
+                                completions.add("*");
+                            }
                             StringUtil.copyPartialMatches(args[1], getPlayerListForTab(), completions);
                         } else if (args.length == 3 && args[0].equalsIgnoreCase("set")) {
                             COMMANDS_payperm.add("true");
@@ -209,7 +221,7 @@ public class TabList implements TabCompleter {
                         commands.add("display");
                     }
                     StringUtil.copyPartialMatches(args[0], commands, completions);
-                } else if (args.length == 2) {
+                } else if (args.length == 2 && !args[0].equalsIgnoreCase("track")) {
                     StringUtil.copyPartialMatches(args[1], getPlayerListForTab(), completions);
                 }
                 Collections.sort(completions);
